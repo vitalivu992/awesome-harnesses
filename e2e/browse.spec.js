@@ -8,7 +8,7 @@ test("browses a project's Claude Code and Cursor conversations", async ({ page }
   // The most recent project opens by itself and lists both harnesses.
   await expect(page.locator("#ahProjects [data-project]").first()).toContainText("demo_app")
   const list = page.locator("#ahConversations")
-  await expect(list.locator("[data-conversation]")).toHaveCount(2)
+  await expect(list.locator("[data-conversation]")).toHaveCount(4)
   await expect(list).toContainText("Health endpoint")
   await expect(list).toContainText("Fix the login form")
 
@@ -51,7 +51,30 @@ test("collapses the projects panel and filters by harness", async ({ page }) => 
   await page.getByRole("button", { name: "Expand projects" }).click()
   await expect(page.locator("#ahProjects")).toBeVisible()
 
-  await page.locator(".ah-segmented").getByRole("button", { name: /Cursor/ }).click()
+  const chips = page.locator(".ah-segmented button")
+  await expect(chips).toHaveText([/All\s*4/, /Claude Code\s*1/, /Cursor\s*1/, /Codex\s*1/, /pi\s*1/])
+  await chips.filter({ hasText: "Cursor" }).click()
   await expect(page.locator("#ahConversations [data-conversation]")).toHaveCount(1)
   await expect(page.locator("#ahConversations")).toContainText("Fix the login form")
+})
+
+test("shows Codex and pi conversations with their resume commands", async ({ page }) => {
+  await page.goto(`/?project=${encodeURIComponent(PROJECT)}&c=codex:cx-1`)
+  const chat = page.locator("#ahChat")
+  await expect(chat.locator(".ah-msg--agent .ah-msg__who")).toHaveText("Codex - GPT 5.5")
+  await expect(chat.locator(".markdown-body strong")).toHaveText("1.27")
+  await chat.locator(".ah-work__toggle").click()
+  await chat.locator(".ah-step--tool .ah-step__head").click()
+  await expect(chat.locator(".ah-code--shell")).toHaveText("go version")
+  await expect(chat.locator(".ah-code--output")).toHaveText("go1.27.1")
+  await page.locator("#ahResume").click()
+  await page.locator("#ahResumeBypass").check()
+  await expect(page.locator("#ahResumeCommand")).toHaveText(`cd ${PROJECT} && codex resume cx-1 --dangerously-bypass-approvals-and-sandbox`)
+
+  await page.goto(`/?project=${encodeURIComponent(PROJECT)}&c=pi:pi-1`)
+  await expect(chat.locator(".ah-msg--agent .ah-msg__who")).toHaveText("pi - GPT 5.6 Luna")
+  await page.locator("#ahResume").click()
+  await expect(page.locator("#ahResumeCommand")).toHaveText(`cd ${PROJECT} && pi --session pi-1`)
+  await expect(page.locator("#ahResumeBypass")).toHaveCount(0)
+  await expect(page.locator("#ahResumeNoBypass")).toContainText("doesn't ask for permissions")
 })

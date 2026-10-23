@@ -1,5 +1,5 @@
 // Command server serves the awesome-harness UI and its read-only API over
-// the local Claude Code and Cursor transcripts.
+// the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo).
 package main
 
 import (
@@ -27,6 +27,11 @@ func main() {
 	cfg := catalog.DefaultConfig()
 	cfg.ClaudeDir = env("CLAUDE_DIR", cfg.ClaudeDir)
 	cfg.CursorDir = env("CURSOR_DIR", cfg.CursorDir)
+	cfg.CursorLogsDir = env("CURSOR_LOGS_DIR", cfg.CursorLogsDir)
+	cfg.CodexDir = env("CODEX_DIR", cfg.CodexDir)
+	cfg.PiDir = env("PI_DIR", cfg.PiDir)
+	cfg.OpenCodeDB = env("OPENCODE_DB", cfg.OpenCodeDB)
+	cfg.KiloDB = env("KILO_DB", cfg.KiloDB)
 
 	mux := http.NewServeMux()
 	(&api.Handler{Catalog: catalog.New(cfg)}).Register(mux)
@@ -40,7 +45,9 @@ func main() {
 	if _, err := web.Dist.Open("index.html"); err != nil {
 		log.Printf("warning: the embedded web bundle has no index.html — run `make web` and rebuild")
 	}
-	log.Printf("listening on http://%s (Claude Code: %s, Cursor: %s)", addr, cfg.ClaudeDir, cfg.CursorDir)
+	log.Printf("listening on http://%s", addr)
+	log.Printf("reading Claude Code %s, Cursor %s, Codex %s, pi %s, OpenCode %s, Kilo %s",
+		cfg.ClaudeDir, cfg.CursorDir, cfg.CodexDir, cfg.PiDir, cfg.OpenCodeDB, cfg.KiloDB)
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           logRequests(gzipJSON(mux)),

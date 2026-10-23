@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { agentLabel, duration, formatMs, modelLabel, shortDateTime } from "../src/lib/format.js"
+import { agentLabel, cursorClient, duration, formatMs, modelLabel, shortDateTime } from "../src/lib/format.js"
 
 describe("modelLabel", () => {
   it.each([
@@ -8,10 +8,13 @@ describe("modelLabel", () => {
     ["claude-sonnet-4-5-20250929", "Sonnet 4.5"],
     ["claude-opus-4-20250514", "Opus 4"],
     ["claude-fable-5-1", "Fable 5.1"],
+    ["claude-opus-5-5-high", "Opus 5.5 High"],
     ["glm-5.3-flash[1m]", "GLM 5.3 Flash"],
     ["claude-4.6-opus-high-thinking", "Opus 4.6 High Thinking"],
     ["composer-2.5-fast", "Composer 2.5 Fast"],
     ["gpt-5.3-codex", "GPT 5.3 Codex"],
+    ["cline-pass/deepseek-v4-flash", "Deepseek V4 Flash"],
+    ["gpt-5.6-luna", "GPT 5.6 Luna"],
     ["", ""],
   ])("%s → %s", (id, label) => expect(modelLabel(id)).toBe(label))
 })
@@ -22,6 +25,20 @@ describe("agentLabel", () => {
     expect(agentLabel("cursor", "claude-opus-5-5")).toBe("Cursor - Opus 5.5")
   })
   it("falls back to the harness alone", () => expect(agentLabel("cursor", "")).toBe("Cursor"))
+  it("names every harness", () => {
+    expect(agentLabel("codex", "gpt-5.5")).toBe("Codex - GPT 5.5")
+    expect(agentLabel("pi", "")).toBe("pi")
+    expect(agentLabel("opencode", "zai/glm-5.3")).toBe("OpenCode - GLM 5.3")
+    expect(agentLabel("kilo", "")).toBe("Kilo Code")
+  })
+})
+
+describe("cursorClient", () => {
+  it("tells CLI chats from app chats", () => {
+    expect(cursorClient({ harness: "cursor", resumable: true }).id).toBe("cli")
+    expect(cursorClient({ harness: "cursor", resumable: false }).id).toBe("app")
+  })
+  it("is null for other harnesses", () => expect(cursorClient({ harness: "claude", resumable: true })).toBeNull())
 })
 
 describe("times", () => {

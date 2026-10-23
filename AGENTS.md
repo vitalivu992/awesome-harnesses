@@ -10,7 +10,8 @@ make dev | make dev-web     # Go server on :8767 | Vite HMR on :5173 proxying /a
 go test ./...               # Go tests (parsers, catalog, api)
 pnpm test:unit              # vitest (tests/*.test.mjs; JSX helpers import fine)
 pnpm test:e2e               # playwright: e2e/make-fixtures.mjs writes a fake home to .e2e-home/,
-                            # then the config starts the server on :8768 over it
+                            # then the config starts the server on :8768 over it — every harness
+                            # location env var must point there (add one when adding a harness)
 ```
 
 JS tooling is **pnpm**. `@playwright/test` is pinned to 1.60.0 to match the browsers installed
@@ -19,8 +20,10 @@ on this machine. `web/dist/.gitkeep` keeps the embed pattern valid on a fresh cl
 
 ## Architecture
 
-Read-only Go server + React SPA, one binary. No database: transcripts are parsed on request and
-summaries cached in memory by file size + mtime.
+Read-only Go server + React SPA, one binary. No database of its own: transcripts (and the
+OpenCode/Kilo databases) are read on request and summaries cached in memory by file size + mtime
+(session update time for database rows). Harness ids (`conv.Claude` … `conv.Kilo`) are the same
+strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
 
 - `internal/conv` — the harness-neutral model: `Conversation` = `Summary` + `Entries`; an entry
   is a `turn` (prompt, steps, final answer, status) or an `event` (compaction, local command
@@ -39,13 +42,41 @@ summaries cached in memory by file size + mtime.
   transcripts from before mid-2026 have no markers, so a turn with a final answer counts as done.
   `store.go` reads the cursor-agent chat store (hex JSON meta + newest `"modelName"` in blobs) and
   the AI code tracking db, both opened `mode=ro&immutable=1` so Cursor's locks are never touched.
-- `internal/catalog` — finds transcript folders and maps them to project paths: Claude via the
-  `cwd` in the newest transcript, Cursor by walking the filesystem with the folder slug
+  `logs.go` reads app-chat turns from the Cursor server logs
+  (`<logs>/*/exthost*/anysphere.cursor-agent-host/*.log`: "Selected Agent Host turn runtime" =
+  start + `modelId`, "Turn terminal blob reads" = end; local times, no zone) and matches them to
+  turns whose prompt `<timestamp>` (minute precision) is within 90 s, in order. App chats keep
+  their metadata on the editor's machine (Remote-SSH), so these logs are the only local source.
+- `internal/codex` — Codex rollouts. Only `response_item` lines build the chat (the `event_msg`
+  user/agent messages duplicate them); user messages that are injected context
+  (`<environment_context>`, `# AGENTS.md instructions`, `<codex_internal_context`…) are skipped,
+  `<turn_aborted>` marks the turn aborted. Tool calls pair with outputs by `call_id`;
+  `function_call.arguments` is a JSON string (decoded), `custom_tool_call.input` (apply_patch,
+  code-mode exec) a raw string. Older outputs are `{"output", "metadata": {"exit_code"}}`. Status
+  from `task_complete` / `turn_aborted` / `error`; model from `turn_context` /
+  `thread_settings_applied`. Careful: field shapes vary by line type (`summary` is a string in
+  `turn_context`, an array in `reasoning`) — decode them as `json.RawMessage`, or the whole line
+  fails to decode. `ReadMeta` (first line) gives id/cwd/subagent for listing; `ReadIndex` the
+  thread names.
+- `internal/pi` — pi sessions: entries form a tree via `parentId`; `activeBranch` walks from the
+  last entry to the root. `toolCall` ↔ `toolResult` by id; status from `stopReason`;
+  `bashExecution` and `custom_message` become events; title from the last `session_info.name`.
+- `internal/opencode` — OpenCode and Kilo (same schema). `List` skips child (subagent) and
+  archived sessions; `Read` builds turns from user messages (non-synthetic text parts) and
+  assistant messages' reasoning/text/tool parts (tool `state` holds input, output/error, times).
+  Opened `mode=ro` **without** `immutable` — both run in WAL mode and recent rows live in the
+  -wal file. `opencodetest.Seed` builds a test database (also used by the catalog tests).
+- `internal/catalog` — each harness is a lister in `harnesses.go` returning `item`s (harness, id,
+  file or db path, project key, size, mtime) plus a `parse` case. Project path: Claude via the
+  `cwd` in the newest transcript; Cursor by walking the filesystem with the folder slug
   (`resolveSlug`; `-` can stand for `/ - _ .` or space), then a Claude path with the same slug,
-  then `guessSlug` (deepest existing dir + rest). Projects merge on that path. Cursor chats
-  without a workspace (`~/.cursor/projects/agent-transcripts`) are project `cursor:no-workspace`.
-  `enrich` adds what the file lacks (Cursor cwd, resumability, model, creation time; active flag).
-  Sessions with zero turns are hidden. Conversation ids are validated before globbing.
+  then `guessSlug` (deepest existing dir + rest); Codex/pi from their first line (memoized in
+  `heads`); OpenCode/Kilo from `session.directory`. Projects merge on that path; no path →
+  `no-workspace`. `enrich` adds what the source lacks (cwd = project dir, Cursor resumability /
+  model / creation time, Codex thread names, active flag). Sessions with zero turns are hidden.
+  `Conversation` looks the id up among the listed items (ids validated first). Adding a
+  harness: parser package → constant in `conv` → lister + `parse` case + `Config` field (+ env
+  var in `cmd/server`, e2e config) → `HARNESSES`, resume spec, icon in the frontend.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
   `GET /api/conversations/{harness}/{id}`. `cmd/server` adds gzip for `/api/*` and an access log,
   and listens on `HOST` (default `127.0.0.1`).
@@ -56,13 +87,14 @@ summaries cached in memory by file size + mtime.
 - `App.jsx` — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
   `useFetch` aborts stale loads.
 - `components/` — `ProjectsPanel` (collapsible rail), `ConversationList`, `ConversationView`
-  (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5", `Work details`
+  (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
   collapsed by default, global Show/Hide work), `Step` (thinking/note/tool rows; tool input shown
   as shell/diff/JSON, output on click), `ResumeButton`, `Markdown` (markdown-it + hljs + GitHub
   alerts; mermaid lazy-loaded, `securityLevel: "strict"`, `html: false`).
 - `lib/` — pure helpers with unit tests: `format.js` (`modelLabel`, dates, durations),
-  `resume.js` (`resumeCommand`, POSIX quoting), `tools.js` (tool icon/summary across both
-  harnesses' tool names), `markdown.js`, `theme.js`, `prefs.js` (localStorage `ah_prefs`: theme,
+  `resume.js` (per-harness resume argv + bypass flag, or `noBypass` reason when the CLI has none;
+  POSIX quoting), `tools.js` (tool icon/summary across the harnesses' tool names, incl. Codex
+  argv `command` arrays, apply_patch and code-mode `exec` strings), `markdown.js`, `theme.js`, `prefs.js` (localStorage `ah_prefs`: theme,
   collapsed panel, bypass checkbox — UI prefs only, reads/writes never throw).
 - Styling: Primer CSS tokens + Font Awesome; app colours are `--ah-*` variables in
   `src/styles/app.css` with dark values under `[data-color-mode="dark"]` (set on `<html>` by

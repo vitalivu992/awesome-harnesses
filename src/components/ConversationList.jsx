@@ -1,13 +1,6 @@
 import { useMemo, useState } from "react"
-import { harnessName, longDateTime, modelLabel, plural, relativeTime, shortDateTime } from "../lib/format.js"
-import { HarnessIcon } from "./HarnessIcon.jsx"
-import { StatusIcon } from "./StatusIcon.jsx"
-
-const HARNESS_FILTERS = [
-  { id: "", label: "All" },
-  { id: "claude", label: "Claude Code" },
-  { id: "cursor", label: "Cursor" },
-]
+import { HARNESS_IDS, harnessName, longDateTime, modelLabel, plural, relativeTime, shortDateTime, statusMeta } from "../lib/format.js"
+import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
 
 /** Conversations of one harness ("" = any) whose title or model contains `text`. */
 export function filterConversations(conversations, { harness = "", text = "" } = {}) {
@@ -27,10 +20,12 @@ export function ConversationList({ project, conversations, loading, error, selec
   const [harness, setHarness] = useState("")
   const shown = useMemo(() => filterConversations(conversations, { harness, text }), [conversations, harness, text])
   const counts = useMemo(() => {
-    const c = { "": conversations?.length || 0, claude: 0, cursor: 0 }
+    const c = { "": conversations?.length || 0 }
     for (const conv of conversations || []) c[conv.harness] = (c[conv.harness] || 0) + 1
     return c
   }, [conversations])
+  // "All" plus the harnesses this project has conversations in.
+  const filters = ["", ...HARNESS_IDS.filter((h) => counts[h])]
 
   if (!project) {
     return (
@@ -66,18 +61,17 @@ export function ConversationList({ project, conversations, loading, error, selec
         />
       </div>
       <div className="ah-segmented" role="group" aria-label="Harness">
-        {HARNESS_FILTERS.map((f) => (
+        {filters.map((h) => (
           <button
-            key={f.id}
+            key={h || "all"}
             type="button"
-            className={harness === f.id ? "is-active" : ""}
-            aria-pressed={harness === f.id}
-            disabled={f.id && !counts[f.id]}
-            onClick={() => setHarness(f.id)}
+            className={harness === h ? "is-active" : ""}
+            aria-pressed={harness === h}
+            onClick={() => setHarness(h)}
           >
-            {f.id ? <HarnessIcon harness={f.id} size={12} /> : null}
-            {f.label}
-            <span className="ah-count">{counts[f.id] || 0}</span>
+            {h ? <HarnessIcon harness={h} size={12} /> : null}
+            {h ? harnessName(h) : "All"}
+            <span className="ah-count">{counts[h] || 0}</span>
           </button>
         ))}
       </div>
@@ -91,20 +85,28 @@ export function ConversationList({ project, conversations, loading, error, selec
             <li key={key}>
               <button
                 type="button"
-                className={`ah-conv${key === selectedId ? " is-active" : ""}`}
+                className={`ah-conv${key === selectedId ? " is-active" : ""}${c.status === "error" ? " is-error" : ""}`}
                 aria-current={key === selectedId ? "true" : undefined}
                 data-conversation={key}
                 onClick={() => onSelect(key)}
               >
                 <span className="ah-conv__top">
-                  <StatusIcon status={c.status} active={c.active} />
                   <span className="ah-conv__title">{c.title}</span>
+                  {c.status === "error" ? (
+                    <i
+                      className="fa-solid fa-circle-exclamation ah-conv__issue"
+                      title={statusMeta("error").label}
+                      aria-label={statusMeta("error").label}
+                      role="img"
+                    ></i>
+                  ) : null}
                 </span>
                 <span className="ah-conv__meta">
                   <span className="ah-conv__agent" title={harnessName(c.harness)}>
                     <HarnessIcon harness={c.harness} size={12} />
                     {model || harnessName(c.harness)}
                   </span>
+                  <ClientBadge conversation={c} />
                   <span title={`${plural(c.turns, "prompt")}, ${plural(c.toolCalls, "tool call")}`}>
                     <i className="fa-regular fa-comment" aria-hidden="true"></i> {c.turns}
                     <i className="fa-solid fa-wrench ah-conv__tools" aria-hidden="true"></i> {c.toolCalls}

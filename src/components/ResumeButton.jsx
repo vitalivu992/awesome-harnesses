@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
-import { bypassFlag, resumeCommand } from "../lib/resume.js"
-import { harnessName } from "../lib/format.js"
+import { bypassFlag, noBypassReason, resumeCommand } from "../lib/resume.js"
+import { HARNESSES, harnessName } from "../lib/format.js"
 import { readPrefs, writePref } from "../lib/prefs.js"
 
 async function copyText(text) {
@@ -31,6 +31,7 @@ export function ResumeButton({ conversation }) {
   const [bypass, setBypass] = useState(() => Boolean(readPrefs().bypass))
   const [copied, setCopied] = useState(false)
   const ref = useRef(null)
+  const flag = bypassFlag(conversation.harness)
   const command = resumeCommand(conversation, { bypass })
 
   useEffect(() => {
@@ -76,17 +77,25 @@ export function ResumeButton({ conversation }) {
       </button>
       {open ? (
         <div className="ah-popover" role="dialog" aria-label="Resume in terminal">
-          <p className="ah-popover__title">Continue in {conversation.harness === "cursor" ? "cursor-agent" : "the Claude Code CLI"}</p>
+          <p className="ah-popover__title">
+            Continue in <code>{HARNESSES[conversation.harness]?.cli || conversation.harness}</code>
+          </p>
           <pre className="ah-command" id="ahResumeCommand">
             <code>{command}</code>
           </pre>
-          <label className="ah-check">
-            <input type="checkbox" id="ahResumeBypass" checked={bypass} onChange={(e) => toggleBypass(e.target.checked)} />
-            <span>
-              Bypass permissions <code>{bypassFlag(conversation.harness)}</code>
-            </span>
-          </label>
-          {bypass ? (
+          {flag ? (
+            <label className="ah-check">
+              <input type="checkbox" id="ahResumeBypass" checked={bypass} onChange={(e) => toggleBypass(e.target.checked)} />
+              <span>
+                Bypass permissions <code>{flag}</code>
+              </span>
+            </label>
+          ) : (
+            <p className="ah-popover__note" id="ahResumeNoBypass">
+              <i className="fa-solid fa-circle-info" aria-hidden="true"></i> {noBypassReason(conversation.harness)}
+            </p>
+          )}
+          {bypass && flag ? (
             <p className="ah-popover__warn">
               <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The agent runs every tool and command
               without asking.

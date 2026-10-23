@@ -11,8 +11,12 @@ import (
 
 // Harness ids.
 const (
-	Claude = "claude"
-	Cursor = "cursor"
+	Claude   = "claude"
+	Cursor   = "cursor"
+	Codex    = "codex"
+	Pi       = "pi"
+	OpenCode = "opencode"
+	Kilo     = "kilo"
 )
 
 // Turn and conversation statuses.

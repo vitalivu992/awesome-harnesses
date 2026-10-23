@@ -1,0 +1,13 @@
+{"type":"session","version":3,"id":"pi-1","timestamp":"2026-10-20T10:00:00.000Z","cwd":"/work/app"}
+{"type":"model_change","id":"m1","parentId":null,"timestamp":"2026-10-20T10:00:00.100Z","provider":"openai","modelId":"gpt-5.6-luna"}
+{"type":"message","id":"s1","parentId":"m1","timestamp":"2026-10-20T10:00:01.000Z","message":{"role":"system","content":"You are pi"}}
+{"type":"message","id":"u1","parentId":"s1","timestamp":"2026-10-20T10:00:02.000Z","message":{"role":"user","content":[{"type":"text","text":"first attempt"}]}}
+{"type":"message","id":"a1","parentId":"u1","timestamp":"2026-10-20T10:00:03.000Z","message":{"role":"assistant","content":[{"type":"text","text":"abandoned branch"}],"stopReason":"stop"}}
+{"type":"message","id":"u2","parentId":"s1","timestamp":"2026-10-20T10:01:00.000Z","message":{"role":"user","content":[{"type":"text","text":"read the readme"}]}}
+{"type":"message","id":"a2","parentId":"u2","timestamp":"2026-10-20T10:01:02.000Z","message":{"role":"assistant","content":[{"type":"thinking","thinking":"**Reading**"},{"type":"toolCall","id":"t1","name":"read","arguments":{"path":"README.md"}}],"model":"gpt-5.6-luna","stopReason":"toolUse"}}
+{"type":"message","id":"r1","parentId":"a2","timestamp":"2026-10-20T10:01:03.000Z","message":{"role":"toolResult","toolCallId":"t1","toolName":"read","content":[{"type":"text","text":"# App"}],"isError":false}}
+{"type":"message","id":"a3","parentId":"r1","timestamp":"2026-10-20T10:01:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"It's called **App**."}],"model":"gpt-5.6-luna","stopReason":"stop"}}
+{"type":"message","id":"b1","parentId":"a3","timestamp":"2026-10-20T10:02:00.000Z","message":{"role":"bashExecution","command":"ls","output":"README.md","exitCode":0}}
+{"type":"message","id":"u3","parentId":"b1","timestamp":"2026-10-20T10:03:00.000Z","message":{"role":"user","content":[{"type":"text","text":"again"}]}}
+{"type":"message","id":"a4","parentId":"u3","timestamp":"2026-10-20T10:03:01.000Z","message":{"role":"assistant","content":[],"model":"gpt-5.6-luna","stopReason":"error","errorMessage":"Invalid API key"}}
+{"type":"session_info","id":"i1","parentId":"a4","timestamp":"2026-10-20T10:03:02.000Z","name":"Readme check"}

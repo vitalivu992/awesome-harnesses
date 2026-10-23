@@ -11,6 +11,7 @@ import (
 
 	"awesome-harness/internal/conv"
 	"awesome-harness/internal/cursor"
+	"awesome-harness/internal/opencode/opencodetest"
 
 	_ "modernc.org/sqlite"
 )
@@ -86,8 +87,44 @@ func setup(t *testing.T) (*Catalog, string) {
 		`INSERT INTO ai_code_hashes VALUES ('h1', 'composer', 'k2', 1, 'gpt-5.3-codex')`,
 		`INSERT INTO ai_code_hashes VALUES ('h2', 'composer', 'k2', 2, 'claude-4.6-opus-high-thinking')`,
 	)
-	return New(Config{ClaudeDir: claudeDir, CursorDir: cursorDir, ActiveWindow: time.Minute}), project
+
+	// Codex (one session in the project, one subagent), pi, OpenCode and Kilo.
+	codexDir := filepath.Join(root, ".codex")
+	write(t, filepath.Join(codexDir, "sessions", "2026", "10", "20", "rollout-x-cx1.jsonl"), fmt.Sprintf(codexRollout, "cx1", project, `"cli"`))
+	write(t, filepath.Join(codexDir, "sessions", "2026", "10", "20", "rollout-x-cx2.jsonl"), fmt.Sprintf(codexRollout, "cx2", project, `{"subagent":{}}`))
+	write(t, filepath.Join(codexDir, "session_index.jsonl"), `{"id":"cx1","thread_name":"Renamed in Codex"}`+"\n")
+	piDir := filepath.Join(root, ".pi")
+	write(t, filepath.Join(piDir, "agent", "sessions", "--x--", "2026_p1.jsonl"), fmt.Sprintf(piSession, project))
+	dbs := map[string]string{}
+	for _, h := range []string{conv.OpenCode, conv.Kilo} {
+		dbs[h] = filepath.Join(root, h, h+".db")
+		if err := os.MkdirAll(filepath.Dir(dbs[h]), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		db, err := sql.Open("sqlite", dbs[h])
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := opencodetest.Seed(db, project); err != nil {
+			t.Fatal(err)
+		}
+		db.Close()
+	}
+	return New(Config{
+		ClaudeDir: claudeDir, CursorDir: cursorDir, CodexDir: codexDir, PiDir: piDir,
+		OpenCodeDB: dbs[conv.OpenCode], KiloDB: dbs[conv.Kilo], ActiveWindow: time.Minute,
+	}), project
 }
+
+const codexRollout = `{"timestamp":"2026-10-20T10:00:00Z","type":"session_meta","payload":{"id":%q,"cwd":%q,"source":%s}}
+{"timestamp":"2026-10-20T10:00:01Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"hello codex"}]}}
+{"timestamp":"2026-10-20T10:00:02Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hi"}]}}
+`
+
+const piSession = `{"type":"session","id":"p1","timestamp":"2026-10-20T10:00:00Z","cwd":%q}
+{"type":"message","id":"u1","parentId":null,"timestamp":"2026-10-20T10:00:01Z","message":{"role":"user","content":[{"type":"text","text":"hello pi"}]}}
+{"type":"message","id":"a1","parentId":"u1","timestamp":"2026-10-20T10:00:02Z","message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"stopReason":"stop"}}
+`
 
 func TestProjectsMergeHarnesses(t *testing.T) {
 	c, project := setup(t)
@@ -103,10 +140,11 @@ func TestProjectsMergeHarnesses(t *testing.T) {
 			gone = &projects[i]
 		}
 	}
-	if mine == nil || mine.Name != "my_app" || !mine.Exists || mine.Claude != 2 || mine.Cursor != 2 {
-		t.Fatalf("my_app = %+v", mine)
+	want := map[string]int{"claude": 2, "cursor": 2, "codex": 1, "pi": 1, "opencode": 1, "kilo": 1}
+	if mine == nil || mine.Name != "my_app" || !mine.Exists || fmt.Sprint(mine.Counts) != fmt.Sprint(want) {
+		t.Fatalf("my_app = %+v, want counts %v (the Codex subagent session is left out)", mine, want)
 	}
-	if gone == nil || gone.Exists || gone.Name != "old-repo" || gone.Cursor != 1 {
+	if gone == nil || gone.Exists || gone.Name != "old-repo" || gone.Counts["cursor"] != 1 {
 		t.Fatalf("deleted project = %+v (guessed from the slug)", gone)
 	}
 }
@@ -117,12 +155,15 @@ func TestConversationsEnrichCursor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sums) != 3 {
-		t.Fatalf("conversations = %d, want 3 (the empty Claude session is hidden)", len(sums))
+	if len(sums) != 7 {
+		t.Fatalf("conversations = %d, want 7 (the empty Claude session is hidden)", len(sums))
 	}
 	byID := map[string]conv.Summary{}
 	for _, s := range sums {
 		byID[s.ID] = s
+		if s.Cwd != project {
+			t.Errorf("%s %s cwd = %q", s.Harness, s.ID, s.Cwd)
+		}
 		if s.ProjectPath != project {
 			t.Errorf("%s projectPath = %q", s.ID, s.ProjectPath)
 		}
@@ -140,6 +181,15 @@ func TestConversationsEnrichCursor(t *testing.T) {
 	k2 := byID["k2"]
 	if k2.Resumable || len(k2.Models) != 1 || k2.Models[0] != "claude-4.6-opus-high-thinking" {
 		t.Fatalf("k2 = %+v (tracked model, newest edit wins)", k2)
+	}
+	if s := byID["cx1"]; s.Harness != conv.Codex || s.Title != "Renamed in Codex" {
+		t.Fatalf("cx1 = %+v (title from session_index.jsonl)", s)
+	}
+	if s := byID["p1"]; s.Harness != conv.Pi || s.Title != "hello pi" {
+		t.Fatalf("p1 = %+v", s)
+	}
+	if s := byID["ses_1"]; s.Title != "Fix the build" || s.Turns != 2 {
+		t.Fatalf("ses_1 = %+v", s)
 	}
 	if _, err := c.Conversations("/nope"); err != ErrNotFound {
 		t.Fatalf("unknown project err = %v", err)
@@ -163,7 +213,17 @@ func TestConversation(t *testing.T) {
 			t.Errorf("Conversation(%q) err = %v", id, err)
 		}
 	}
-	if _, err := c.Conversation("codex", "c1"); err != ErrNotFound {
+	for _, h := range []string{conv.Codex, conv.Pi, conv.OpenCode, conv.Kilo} {
+		id := map[string]string{conv.Codex: "cx1", conv.Pi: "p1", conv.OpenCode: "ses_1", conv.Kilo: "ses_1"}[h]
+		full, err := c.Conversation(h, id)
+		if err != nil || full.Harness != h || full.ProjectPath != project || len(full.Entries) == 0 {
+			t.Errorf("Conversation(%s, %s) = %+v, %v", h, id, full, err)
+		}
+	}
+	if _, err := c.Conversation(conv.Codex, "cx2"); err != ErrNotFound {
+		t.Errorf("subagent session err = %v", err)
+	}
+	if _, err := c.Conversation("gemini", "c1"); err != ErrNotFound {
 		t.Errorf("unknown harness err = %v", err)
 	}
 }

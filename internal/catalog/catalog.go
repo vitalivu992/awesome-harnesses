@@ -1,10 +1,12 @@
-// Package catalog finds the Claude Code and Cursor transcripts on disk,
-// groups them by project (the directory the agent ran in, so one project
-// lists both harnesses' conversations) and caches parsed summaries by file
-// size + modification time. Everything is read-only.
+// Package catalog finds the conversations of every supported harness (Claude
+// Code, Cursor, Codex, pi, OpenCode, Kilo), groups them by project (the
+// directory the agent ran in, so one project lists every harness's
+// conversations) and caches parsed summaries by file size + modification time
+// (update time for database-backed harnesses). Everything is read-only.
 package catalog
 
 import (
+	"database/sql"
 	"errors"
 	"os"
 	"path/filepath"
@@ -15,59 +17,78 @@ import (
 	"sync"
 	"time"
 
-	"awesome-harness/internal/claude"
 	"awesome-harness/internal/conv"
 	"awesome-harness/internal/cursor"
 )
 
-// Config says where the harnesses keep their data.
+// Config says where the harnesses keep their data. An empty or missing
+// location just means that harness has no conversations.
 type Config struct {
 	ClaudeDir string // ~/.claude
 	CursorDir string // ~/.cursor
-	// ActiveWindow: a conversation whose file changed this recently is marked active.
+	// CursorLogsDir: the Cursor server's logs (~/.cursor-server/data/logs), which
+	// hold the model and turn times of Cursor app chats.
+	CursorLogsDir string
+	CodexDir      string // ~/.codex ($CODEX_HOME)
+	PiDir         string // ~/.pi
+	OpenCodeDB    string // ~/.local/share/opencode/opencode.db
+	KiloDB        string // ~/.local/share/kilo/kilo.db
+	// ActiveWindow: a conversation updated this recently is marked active.
 	ActiveWindow time.Duration
 }
 
-// DefaultConfig uses the harnesses' standard locations under $HOME.
+// DefaultConfig uses the harnesses' standard locations.
 func DefaultConfig() Config {
 	home, _ := os.UserHomeDir()
+	codex := os.Getenv("CODEX_HOME")
+	if codex == "" {
+		codex = filepath.Join(home, ".codex")
+	}
+	data := os.Getenv("XDG_DATA_HOME")
+	if data == "" {
+		data = filepath.Join(home, ".local", "share")
+	}
 	return Config{
-		ClaudeDir:    filepath.Join(home, ".claude"),
-		CursorDir:    filepath.Join(home, ".cursor"),
-		ActiveWindow: 2 * time.Minute,
+		ClaudeDir:     filepath.Join(home, ".claude"),
+		CursorDir:     filepath.Join(home, ".cursor"),
+		CursorLogsDir: filepath.Join(home, ".cursor-server", "data", "logs"),
+		CodexDir:      codex,
+		PiDir:         filepath.Join(home, ".pi"),
+		OpenCodeDB:    filepath.Join(data, "opencode", "opencode.db"),
+		KiloDB:        filepath.Join(data, "kilo", "kilo.db"),
+		ActiveWindow:  2 * time.Minute,
 	}
 }
 
-// Project is one working directory with conversations in either harness.
+// Project is one working directory with conversations in any harness.
 type Project struct {
-	// Key identifies the project in URLs: its path, or "slug:<folder>" when
-	// the folder's path couldn't be recovered (deleted project).
-	Key       string `json:"key"`
-	Path      string `json:"path"`
-	Name      string `json:"name"`
-	Exists    bool   `json:"exists"`
-	Claude    int    `json:"claude"`
-	Cursor    int    `json:"cursor"`
-	UpdatedAt string `json:"updatedAt,omitempty"`
+	// Key identifies the project in URLs: its path, or NoWorkspaceKey.
+	Key    string `json:"key"`
+	Path   string `json:"path"`
+	Name   string `json:"name"`
+	Exists bool   `json:"exists"`
+	// Counts: conversations per harness id.
+	Counts    map[string]int `json:"counts"`
+	UpdatedAt string         `json:"updatedAt,omitempty"`
 }
 
 // ErrNotFound is returned for an unknown project or conversation.
 var ErrNotFound = errors.New("not found")
 
-// NoWorkspaceKey is the project of Cursor chats opened without a folder.
-const NoWorkspaceKey = "cursor:no-workspace"
+// NoWorkspaceKey is the project of conversations started without a folder.
+const NoWorkspaceKey = "no-workspace"
 
-type source struct {
+// item is one conversation as found on disk, before parsing.
+type item struct {
 	harness string
-	dir     string // the folder holding the transcripts
-}
-
-type file struct {
-	harness string
-	path    string
+	id      string
+	path    string // the transcript file, or the database (OpenCode, Kilo)
+	key     string // project key
 	size    int64
 	mtime   time.Time
 }
+
+func (it item) cacheKey() string { return it.harness + "\x00" + it.path + "\x00" + it.id }
 
 type cached struct {
 	size  int64
@@ -85,14 +106,19 @@ type Catalog struct {
 	cfg Config
 
 	mu        sync.Mutex
-	summaries map[string]cached                    // transcript path → summary
-	dirPaths  map[string]string                    // transcript folder → project path ("" = unresolved)
-	chatInfo  map[string]stamped[*cursor.ChatInfo] // store.db path → info (nil = none)
+	summaries map[string]cached                    // item.cacheKey() → summary
+	dirPaths  map[string]string                    // transcript folder → project path
+	heads     map[string]header                    // Codex / pi file → id + cwd from its first line
+	dbs       map[string]*sql.DB                   // OpenCode / Kilo database path → handle
+	chatInfo  map[string]stamped[*cursor.ChatInfo] // Cursor store.db path → info (nil = none)
 	tracked   stamped[map[string]string]           // Cursor conversation id → model
+	logTurns  stamped[map[string][]cursor.LogTurn] // Cursor conversation id → logged app turns
+	logsSig   string                               // Cursor log files' count + sizes, with logTurns.mtime
+	codexIdx  stamped[map[string]string]           // Codex session id → thread name
 	now       func() time.Time
 }
 
-// New returns a catalog over cfg's directories.
+// New returns a catalog over cfg's locations.
 func New(cfg Config) *Catalog {
 	if cfg.ActiveWindow == 0 {
 		cfg.ActiveWindow = 2 * time.Minute
@@ -101,164 +127,70 @@ func New(cfg Config) *Catalog {
 		cfg:       cfg,
 		summaries: map[string]cached{},
 		dirPaths:  map[string]string{},
+		heads:     map[string]header{},
+		dbs:       map[string]*sql.DB{},
 		chatInfo:  map[string]stamped[*cursor.ChatInfo]{},
 		now:       time.Now,
 	}
 }
 
-func (c *Catalog) claudeProjects() string { return filepath.Join(c.cfg.ClaudeDir, "projects") }
-func (c *Catalog) cursorProjects() string { return filepath.Join(c.cfg.CursorDir, "projects") }
-
-// sources lists every transcript folder with its project key.
-func (c *Catalog) sources() map[string][]source {
-	keys := map[string][]source{}
+// items lists every conversation of every harness.
+func (c *Catalog) items() []item {
 	claudePaths := map[string]string{} // loose slug → path, to place unresolvable Cursor folders
-	if entries, err := os.ReadDir(c.claudeProjects()); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			dir := filepath.Join(c.claudeProjects(), e.Name())
-			files := listFiles(conv.Claude, dir)
-			if len(files) == 0 {
-				continue
-			}
-			path := c.dirPath(dir, func() string {
-				sort.Slice(files, func(i, j int) bool { return files[i].mtime.After(files[j].mtime) })
-				for _, f := range files {
-					if cwd := claude.ReadCwd(f.path); cwd != "" {
-						return cwd
-					}
-				}
-				return resolveSlug(e.Name())
-			})
-			key := keyFor(path, e.Name())
-			if path != "" {
-				claudePaths[looseSlug(path)] = path
-			}
-			keys[key] = append(keys[key], source{conv.Claude, dir})
-		}
-	}
-	if entries, err := os.ReadDir(c.cursorProjects()); err == nil {
-		for _, e := range entries {
-			if !e.IsDir() {
-				continue
-			}
-			if e.Name() == "agent-transcripts" {
-				dir := filepath.Join(c.cursorProjects(), e.Name())
-				if len(listFiles(conv.Cursor, dir)) > 0 {
-					keys[NoWorkspaceKey] = append(keys[NoWorkspaceKey], source{conv.Cursor, dir})
-				}
-				continue
-			}
-			dir := filepath.Join(c.cursorProjects(), e.Name(), "agent-transcripts")
-			if len(listFiles(conv.Cursor, dir)) == 0 {
-				continue
-			}
-			path := c.dirPath(dir, func() string {
-				if p := resolveSlug(e.Name()); p != "" {
-					return p
-				}
-				if p := claudePaths[looseSlug(e.Name())]; p != "" {
-					return p
-				}
-				return guessSlug(e.Name())
-			})
-			key := keyFor(path, e.Name())
-			keys[key] = append(keys[key], source{conv.Cursor, dir})
-		}
-	}
-	return keys
+	var out []item
+	out = append(out, c.claudeItems(claudePaths)...)
+	out = append(out, c.cursorItems(claudePaths)...)
+	out = append(out, c.codexItems()...)
+	out = append(out, c.piItems()...)
+	out = append(out, c.dbItems(conv.OpenCode, c.cfg.OpenCodeDB)...)
+	out = append(out, c.dbItems(conv.Kilo, c.cfg.KiloDB)...)
+	return out
 }
 
-func keyFor(path, folder string) string {
-	if path != "" {
-		return path
+func keyForPath(path string) string {
+	if path == "" {
+		return NoWorkspaceKey
 	}
-	return "slug:" + folder
+	return filepath.Clean(path)
 }
 
-// dirPath memoizes a transcript folder's project path.
-func (c *Catalog) dirPath(dir string, resolve func() string) string {
-	c.mu.Lock()
-	path, ok := c.dirPaths[dir]
-	c.mu.Unlock()
-	if ok {
-		return path
+func projectPathOf(key string) string {
+	if key == NoWorkspaceKey {
+		return ""
 	}
-	path = resolve()
-	c.mu.Lock()
-	c.dirPaths[dir] = path
-	c.mu.Unlock()
-	return path
-}
-
-// listFiles lists a folder's transcripts: <dir>/<id>.jsonl for Claude Code,
-// <dir>/<id>/<id>.jsonl for Cursor (subagent transcripts are left out).
-func listFiles(harness, dir string) []file {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return nil
-	}
-	var files []file
-	for _, e := range entries {
-		var path string
-		switch harness {
-		case conv.Claude:
-			if e.IsDir() || !strings.HasSuffix(e.Name(), ".jsonl") {
-				continue
-			}
-			path = filepath.Join(dir, e.Name())
-		case conv.Cursor:
-			if !e.IsDir() {
-				continue
-			}
-			path = filepath.Join(dir, e.Name(), e.Name()+".jsonl")
-		}
-		st, err := os.Stat(path)
-		if err != nil || st.Size() == 0 {
-			continue
-		}
-		files = append(files, file{harness, path, st.Size(), st.ModTime()})
-	}
-	return files
+	return key
 }
 
 // Projects lists every project, most recently active first.
 func (c *Catalog) Projects() []Project {
-	var projects []Project
-	for key, srcs := range c.sources() {
-		p := Project{Key: key}
-		switch {
-		case key == NoWorkspaceKey:
-			p.Name = "No workspace"
-		case strings.HasPrefix(key, "slug:"):
-			p.Name = strings.TrimPrefix(key, "slug:")
-		default:
-			p.Path = key
-			p.Name = filepath.Base(key)
-			if st, err := os.Stat(key); err == nil && st.IsDir() {
-				p.Exists = true
-			}
-		}
-		var latest time.Time
-		for _, s := range srcs {
-			files := listFiles(s.harness, s.dir)
-			if s.harness == conv.Claude {
-				p.Claude += len(files)
+	byKey := map[string]*Project{}
+	latest := map[string]time.Time{}
+	for _, it := range c.items() {
+		p := byKey[it.key]
+		if p == nil {
+			p = &Project{Key: it.key, Counts: map[string]int{}}
+			if it.key == NoWorkspaceKey {
+				p.Name = "No workspace"
 			} else {
-				p.Cursor += len(files)
-			}
-			for _, f := range files {
-				if f.mtime.After(latest) {
-					latest = f.mtime
+				p.Path = it.key
+				p.Name = filepath.Base(it.key)
+				if st, err := os.Stat(it.key); err == nil && st.IsDir() {
+					p.Exists = true
 				}
 			}
+			byKey[it.key] = p
 		}
-		if !latest.IsZero() {
-			p.UpdatedAt = latest.UTC().Format(time.RFC3339)
+		p.Counts[it.harness]++
+		if it.mtime.After(latest[it.key]) {
+			latest[it.key] = it.mtime
 		}
-		projects = append(projects, p)
+	}
+	projects := make([]Project, 0, len(byKey))
+	for key, p := range byKey {
+		if t := latest[key]; !t.IsZero() {
+			p.UpdatedAt = t.UTC().Format(time.RFC3339)
+		}
+		projects = append(projects, *p)
 	}
 	sort.Slice(projects, func(i, j int) bool {
 		if projects[i].UpdatedAt != projects[j].UpdatedAt {
@@ -271,16 +203,17 @@ func (c *Catalog) Projects() []Project {
 
 // Conversations lists a project's conversations, most recently updated first.
 func (c *Catalog) Conversations(key string) ([]conv.Summary, error) {
-	srcs, ok := c.sources()[key]
-	if !ok {
+	var items []item
+	for _, it := range c.items() {
+		if it.key == key {
+			items = append(items, it)
+		}
+	}
+	if len(items) == 0 {
 		return nil, ErrNotFound
 	}
-	var files []file
-	for _, s := range srcs {
-		files = append(files, listFiles(s.harness, s.dir)...)
-	}
-	out := make([]conv.Summary, len(files))
-	ok2 := make([]bool, len(files))
+	out := make([]conv.Summary, len(items))
+	ok := make([]bool, len(items))
 	var wg sync.WaitGroup
 	jobs := make(chan int)
 	for w := 0; w < runtime.NumCPU(); w++ {
@@ -288,182 +221,84 @@ func (c *Catalog) Conversations(key string) ([]conv.Summary, error) {
 		go func() {
 			defer wg.Done()
 			for i := range jobs {
-				if sum, err := c.summary(files[i]); err == nil {
-					out[i], ok2[i] = sum, true
+				if sum, err := c.summary(items[i]); err == nil {
+					out[i], ok[i] = sum, true
 				}
 			}
 		}()
 	}
-	for i := range files {
+	for i := range items {
 		jobs <- i
 	}
 	close(jobs)
 	wg.Wait()
-	sums := make([]conv.Summary, 0, len(files))
+	sums := make([]conv.Summary, 0, len(items))
 	for i, s := range out {
 		// Sessions with no prompt (only a /clear, or opened and closed) are noise.
-		if !ok2[i] || s.Turns == 0 {
+		if !ok[i] || s.Turns == 0 {
 			continue
 		}
 		s.ProjectPath = projectPathOf(key)
-		c.enrich(&s, nil, files[i])
+		c.enrich(&s, nil, items[i])
 		sums = append(sums, s)
 	}
 	sort.Slice(sums, func(i, j int) bool { return sums[i].UpdatedAt > sums[j].UpdatedAt })
 	return sums, nil
 }
 
-func projectPathOf(key string) string {
-	if key == NoWorkspaceKey || strings.HasPrefix(key, "slug:") {
-		return ""
-	}
-	return key
-}
-
-func (c *Catalog) summary(f file) (conv.Summary, error) {
+func (c *Catalog) summary(it item) (conv.Summary, error) {
 	c.mu.Lock()
-	hit, ok := c.summaries[f.path]
+	hit, ok := c.summaries[it.cacheKey()]
 	c.mu.Unlock()
-	if ok && hit.size == f.size && hit.mtime.Equal(f.mtime) {
+	if ok && hit.size == it.size && hit.mtime.Equal(it.mtime) {
 		return hit.sum, nil
 	}
-	full, err := parse(f)
+	full, err := c.parse(it)
 	if err != nil {
 		return conv.Summary{}, err
 	}
 	c.mu.Lock()
-	c.summaries[f.path] = cached{f.size, f.mtime, full.Summary}
+	c.summaries[it.cacheKey()] = cached{it.size, it.mtime, full.Summary}
 	c.mu.Unlock()
 	return full.Summary, nil
 }
 
-func parse(f file) (*conv.Conversation, error) {
-	if f.harness == conv.Claude {
-		return claude.ParseFile(f.path)
-	}
-	return cursor.ParseFile(f.path)
-}
-
 var idRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 
-// Conversation reads one transcript in full.
+// Conversation reads one conversation in full.
 func (c *Catalog) Conversation(harness, id string) (*conv.Conversation, error) {
 	if !idRe.MatchString(id) || strings.Contains(id, "..") {
 		return nil, ErrNotFound
 	}
-	var pattern string
-	switch harness {
-	case conv.Claude:
-		pattern = filepath.Join(c.claudeProjects(), "*", id+".jsonl")
-	case conv.Cursor:
-		pattern = filepath.Join(c.cursorProjects(), "*", "agent-transcripts", id, id+".jsonl")
-	default:
-		return nil, ErrNotFound
-	}
-	matches, _ := filepath.Glob(pattern)
-	if harness == conv.Cursor {
-		more, _ := filepath.Glob(filepath.Join(c.cursorProjects(), "agent-transcripts", id, id+".jsonl"))
-		matches = append(matches, more...)
-	}
-	if len(matches) == 0 {
-		return nil, ErrNotFound
-	}
-	path := matches[0]
-	st, err := os.Stat(path)
-	if err != nil {
-		return nil, ErrNotFound
-	}
-	f := file{harness, path, st.Size(), st.ModTime()}
-	full, err := parse(f)
-	if err != nil {
-		return nil, err
-	}
-	dir := filepath.Dir(path)
-	if harness == conv.Cursor {
-		dir = filepath.Dir(dir)
-	}
-	for key, srcs := range c.sources() {
-		for _, s := range srcs {
-			if s.dir == dir {
-				full.ProjectPath = projectPathOf(key)
-			}
+	for _, it := range c.items() {
+		if it.harness != harness || it.id != id {
+			continue
 		}
-	}
-	c.enrich(&full.Summary, full, f)
-	return full, nil
-}
-
-// enrich adds what isn't in the transcript itself: the active flag, and for
-// Cursor the workspace, the CLI chat store (resumability, creation time,
-// model) and the model from the AI code tracking database.
-func (c *Catalog) enrich(s *conv.Summary, full *conv.Conversation, f file) {
-	s.Active = c.now().Sub(f.mtime) < c.cfg.ActiveWindow
-	if s.Harness != conv.Cursor {
-		return
-	}
-	s.Cwd = s.ProjectPath
-	model := ""
-	if s.ProjectPath != "" {
-		if info := c.readChatInfo(cursor.ChatStorePath(filepath.Join(c.cfg.CursorDir, "chats"), s.ProjectPath, s.ID)); info != nil {
-			s.Resumable = true
-			model = info.Model
-			if !info.CreatedAt.IsZero() && (s.StartedAt == "" || info.CreatedAt.UTC().Format(time.RFC3339Nano) < s.StartedAt) {
-				s.StartedAt = info.CreatedAt.UTC().Format(time.RFC3339Nano)
-			}
-		}
-	}
-	if model == "" {
-		model = c.trackedModel(s.ID)
-	}
-	if model == "" || len(s.Models) > 0 {
-		return
-	}
-	s.Models = []string{model}
-	if full != nil {
-		full.Models = s.Models
-		for i := range full.Entries {
-			if full.Entries[i].Kind == conv.EntryTurn && full.Entries[i].Model == "" {
-				full.Entries[i].Model = model
-			}
-		}
-	}
-}
-
-func (c *Catalog) readChatInfo(path string) *cursor.ChatInfo {
-	st, err := os.Stat(path)
-	if err != nil {
-		return nil
-	}
-	c.mu.Lock()
-	hit, ok := c.chatInfo[path]
-	c.mu.Unlock()
-	if ok && hit.mtime.Equal(st.ModTime()) {
-		return hit.value
-	}
-	info, err := cursor.ReadChatInfo(path)
-	if err != nil {
-		info = nil
-	}
-	c.mu.Lock()
-	c.chatInfo[path] = stamped[*cursor.ChatInfo]{st.ModTime(), info}
-	c.mu.Unlock()
-	return info
-}
-
-func (c *Catalog) trackedModel(id string) string {
-	path := filepath.Join(c.cfg.CursorDir, "ai-tracking", "ai-code-tracking.db")
-	st, err := os.Stat(path)
-	if err != nil {
-		return ""
-	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if c.tracked.value == nil || !c.tracked.mtime.Equal(st.ModTime()) {
-		models, err := cursor.ReadTrackedModels(path)
+		full, err := c.parse(it)
 		if err != nil {
-			models = map[string]string{}
+			return nil, err
 		}
-		c.tracked = stamped[map[string]string]{st.ModTime(), models}
+		full.ProjectPath = projectPathOf(it.key)
+		c.enrich(&full.Summary, full, it)
+		return full, nil
 	}
-	return c.tracked.value[id]
+	return nil, ErrNotFound
+}
+
+// enrich adds what isn't in the conversation itself: the active flag, the
+// project directory as cwd when the harness doesn't record one, and the
+// harness-specific extras (Cursor model / resumability, Codex thread names).
+func (c *Catalog) enrich(s *conv.Summary, full *conv.Conversation, it item) {
+	s.Active = c.now().Sub(it.mtime) < c.cfg.ActiveWindow
+	if s.Cwd == "" {
+		s.Cwd = s.ProjectPath
+	}
+	switch s.Harness {
+	case conv.Cursor:
+		c.enrichCursor(s, full)
+	case conv.Codex:
+		if name := c.codexName(s.ID); name != "" {
+			s.Title = name
+		}
+	}
 }

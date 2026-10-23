@@ -15,7 +15,10 @@ export default defineConfig({
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {
-        command: `node e2e/make-fixtures.mjs && pnpm build && PORT=8768 CLAUDE_DIR=${home}/.claude CURSOR_DIR=${home}/.cursor go run ./cmd/server`,
+        // Every harness location points into the fake home (the databases don't exist there).
+        command:
+          `node e2e/make-fixtures.mjs && pnpm build && PORT=8768 CLAUDE_DIR=${home}/.claude CURSOR_DIR=${home}/.cursor CURSOR_LOGS_DIR=${home}/.cursor-server/data/logs ` +
+          `CODEX_DIR=${home}/.codex PI_DIR=${home}/.pi OPENCODE_DB=${home}/opencode.db KILO_DB=${home}/kilo.db go run ./cmd/server`,
         url: `${baseURL}/health`,
         reuseExistingServer: !process.env.CI,
         timeout: 120_000,

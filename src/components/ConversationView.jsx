@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { agentLabel, clockTime, duration, longDateTime, plural, statusMeta } from "../lib/format.js"
-import { HarnessIcon } from "./HarnessIcon.jsx"
+import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
 import { Markdown } from "./Markdown.jsx"
 import { ResumeButton } from "./ResumeButton.jsx"
 import { StatusIcon } from "./StatusIcon.jsx"
@@ -132,6 +132,7 @@ function Header({ conversation, expandAll, onExpandAll }) {
               <HarnessIcon harness={c.harness} size={12} /> {agentLabel(c.harness, m)}
             </span>
           ))}
+          <ClientBadge conversation={c} />
           {c.gitBranch ? (
             <span className="ah-chip" title="Git branch">
               <i className="fa-solid fa-code-branch" aria-hidden="true"></i> {c.gitBranch}

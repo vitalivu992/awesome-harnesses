@@ -1,0 +1,20 @@
+{"timestamp":"2026-10-20T10:00:00.000Z","type":"session_meta","payload":{"id":"01a0-codex","timestamp":"2026-10-20T10:00:00.000Z","cwd":"/work/app","source":"cli","git":{"branch":"main"}}}
+{"timestamp":"2026-10-20T10:00:00.100Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>\n  <cwd>/work/app</cwd>\n</environment_context>"}]}}
+{"timestamp":"2026-10-20T10:00:00.200Z","type":"turn_context","payload":{"cwd":"/work/app","model":"gpt-5.5","summary":"detailed"}}
+{"timestamp":"2026-10-20T10:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"list the files"}]}}
+{"timestamp":"2026-10-20T10:00:01.100Z","type":"event_msg","payload":{"type":"user_message","message":"list the files","kind":"plain"}}
+{"timestamp":"2026-10-20T10:00:02.000Z","type":"response_item","payload":{"type":"reasoning","summary":[{"type":"summary_text","text":"**Listing files**"}],"content":null,"encrypted_content":"x"}}
+{"timestamp":"2026-10-20T10:00:03.000Z","type":"response_item","payload":{"type":"function_call","name":"shell","arguments":"{\"command\":[\"bash\",\"-lc\",\"ls\"],\"workdir\":\"/work/app\"}","call_id":"c1"}}
+{"timestamp":"2026-10-20T10:00:04.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"output\":\"main.go\\n\",\"metadata\":{\"exit_code\":0}}"}}
+{"timestamp":"2026-10-20T10:00:05.000Z","type":"response_item","payload":{"type":"custom_tool_call","status":"completed","call_id":"c2","name":"apply_patch","input":"*** Begin Patch\n*** Add File: a.txt\n+hi\n*** End Patch"}}
+{"timestamp":"2026-10-20T10:00:06.000Z","type":"response_item","payload":{"type":"custom_tool_call_output","call_id":"c2","output":"{\"output\":\"failed\",\"metadata\":{\"exit_code\":1}}"}}
+{"timestamp":"2026-10-20T10:00:06.500Z","type":"response_item","payload":{"type":"tool_search_call","call_id":"c3","status":"completed","arguments":{"query":"memos"}}}
+{"timestamp":"2026-10-20T10:00:07.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"There is one file: `main.go`."}]}}
+{"timestamp":"2026-10-20T10:00:07.100Z","type":"event_msg","payload":{"type":"agent_message","message":"There is one file: `main.go`."}}
+{"timestamp":"2026-10-20T10:00:07.200Z","type":"event_msg","payload":{"type":"task_complete","last_agent_message":"There is one file"}}
+{"timestamp":"2026-10-20T10:01:00.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"now delete it"}]}}
+{"timestamp":"2026-10-20T10:01:01.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"rm main.go\"}","call_id":"c4"}}
+{"timestamp":"2026-10-20T10:01:02.000Z","type":"event_msg","payload":{"type":"turn_aborted","reason":"interrupted"}}
+{"timestamp":"2026-10-20T10:01:02.100Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<turn_aborted>\nThe user interrupted.\n</turn_aborted>"}]}}
+{"timestamp":"2026-10-20T10:02:00.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"retry"}]}}
+{"timestamp":"2026-10-20T10:02:01.000Z","type":"event_msg","payload":{"type":"error","message":"Your access token could not be refreshed"}}

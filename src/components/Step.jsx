@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { clockTime, duration, formatMs } from "../lib/format.js"
-import { toolIcon, toolLabel, toolSummary } from "../lib/tools.js"
+import { shellCommand, toolIcon, toolLabel, toolSummary } from "../lib/tools.js"
 
 function prettyInput(input) {
   if (input == null) return ""
@@ -8,37 +8,41 @@ function prettyInput(input) {
   return JSON.stringify(input, null, 2)
 }
 
+const SHELL_TOOLS = new Set(["bash", "shell", "run_terminal_cmd", "exec_command", "shell_command"])
+
 /** The parts of a tool input worth showing as text blocks instead of JSON. */
 function ToolInput({ tool, input }) {
   const i = input && typeof input === "object" ? input : null
-  const name = String(tool || "").toLowerCase()
-  if (i && (name === "bash" || name === "shell") && typeof i.command === "string") {
+  const command = shellCommand(i)
+  if (i && command && SHELL_TOOLS.has(String(tool || "").toLowerCase())) {
     return (
       <>
-        {i.description ? <p className="ah-step__desc">{i.description}</p> : null}
+        {i.description || i.workdir ? <p className="ah-step__desc">{i.description || i.workdir}</p> : null}
         <pre className="ah-code ah-code--shell">
-          <code>{i.command}</code>
+          <code>{command}</code>
         </pre>
       </>
     )
   }
-  if (i && typeof i.old_string === "string" && typeof i.new_string === "string") {
+  const oldText = i?.old_string ?? i?.oldString ?? i?.oldText
+  const newText = i?.new_string ?? i?.newString ?? i?.newText
+  if (typeof oldText === "string" && typeof newText === "string") {
     return (
       <>
-        <p className="ah-step__desc">{i.file_path || i.path}</p>
+        <p className="ah-step__desc">{i.file_path || i.filePath || i.path}</p>
         <pre className="ah-code ah-code--del">
-          <code>{i.old_string}</code>
+          <code>{oldText}</code>
         </pre>
         <pre className="ah-code ah-code--add">
-          <code>{i.new_string}</code>
+          <code>{newText}</code>
         </pre>
       </>
     )
   }
-  if (i && typeof i.content === "string" && (i.file_path || i.path)) {
+  if (i && typeof i.content === "string" && (i.file_path || i.filePath || i.path)) {
     return (
       <>
-        <p className="ah-step__desc">{i.file_path || i.path}</p>
+        <p className="ah-step__desc">{i.file_path || i.filePath || i.path}</p>
         <pre className="ah-code ah-code--add">
           <code>{i.content}</code>
         </pre>

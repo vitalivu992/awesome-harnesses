@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { relativeTime } from "../lib/format.js"
+import { HARNESS_IDS, harnessName, relativeTime } from "../lib/format.js"
 import { HarnessIcon } from "./HarnessIcon.jsx"
 import { ThemeToggle } from "./ThemeToggle.jsx"
 
@@ -22,7 +22,7 @@ export function filterProjects(projects, text) {
 }
 
 /**
- * First column: every project with Claude Code / Cursor conversations. Collapses to
+ * First column: every project with agent conversations, with a count per harness. Collapses to
  * a rail of initials badges.
  */
 export function ProjectsPanel({ projects, loading, error, selectedKey, onSelect, collapsed, onToggle, onRefresh }) {
@@ -97,7 +97,6 @@ export function ProjectsPanel({ projects, loading, error, selectedKey, onSelect,
               onClick={() => onSelect(p.key)}
             >
               <span className="ah-project__top">
-                <i className={`fa-solid ${p.exists ? "fa-folder" : "fa-folder-minus"} ah-project__icon`} aria-hidden="true"></i>
                 <span className="ah-project__name">{p.name}</span>
                 <span className="ah-project__when">{relativeTime(p.updatedAt)}</span>
               </span>
@@ -107,16 +106,11 @@ export function ProjectsPanel({ projects, loading, error, selectedKey, onSelect,
                 </span>
               ) : null}
               <span className="ah-project__counts">
-                {p.claude ? (
-                  <span title={`${p.claude} Claude Code transcripts`}>
-                    <HarnessIcon harness="claude" size={12} /> {p.claude}
+                {HARNESS_IDS.filter((h) => p.counts?.[h]).map((h) => (
+                  <span key={h} title={`${p.counts[h]} ${harnessName(h)} conversations`}>
+                    <HarnessIcon harness={h} size={12} /> {p.counts[h]}
                   </span>
-                ) : null}
-                {p.cursor ? (
-                  <span title={`${p.cursor} Cursor transcripts`}>
-                    <HarnessIcon harness="cursor" size={12} /> {p.cursor}
-                  </span>
-                ) : null}
+                ))}
               </span>
             </button>
           </li>

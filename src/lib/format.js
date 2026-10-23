@@ -1,9 +1,16 @@
 // Labels and times for the UI: harness and model names, statuses, dates.
 
+// In display order (project counts, harness filter).
 export const HARNESSES = {
   claude: { id: "claude", name: "Claude Code", cli: "claude" },
   cursor: { id: "cursor", name: "Cursor", cli: "cursor-agent" },
+  codex: { id: "codex", name: "Codex", cli: "codex" },
+  pi: { id: "pi", name: "pi", cli: "pi" },
+  opencode: { id: "opencode", name: "OpenCode", cli: "opencode" },
+  kilo: { id: "kilo", name: "Kilo Code", cli: "kilo" },
 }
+
+export const HARNESS_IDS = Object.keys(HARNESSES)
 
 export function harnessName(id) {
   return HARNESSES[id]?.name || id || ""
@@ -18,14 +25,20 @@ function capitalize(word) {
 
 /**
  * A readable model name: "claude-opus-5-5" → "Opus 5.5",
+ * "cline-pass/deepseek-v4-flash" → "Deepseek V4 Flash",
  * "claude-sonnet-4-5-20250929" → "Sonnet 4.5", "claude-4.6-opus-high-thinking"
- * → "Opus 4.6 High Thinking", "composer-2.5-fast" → "Composer 2.5 Fast".
+ * → "Opus 4.6 High Thinking", "claude-opus-5-5-high" → "Opus 5.5 High",
+ * "composer-2.5-fast" → "Composer 2.5 Fast".
  */
 export function modelLabel(id) {
   if (!id) return ""
-  const s = String(id).replace(/\[[^\]]*\]$/, "").trim()
-  let m = s.match(/^claude-(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?$/i)
-  if (m) return `${capitalize(m[1])} ${m[2]}${m[3] ? `.${m[3]}` : ""}`
+  // "provider/model" (OpenCode, Kilo) → "model"; "[1m]" context suffix dropped.
+  const s = String(id).replace(/\[[^\]]*\]$/, "").trim().split("/").pop()
+  let m = s.match(/^claude-(opus|sonnet|haiku|fable)-(\d+)(?:-(\d{1,2}))?(?:-\d{8})?((?:-[a-z]+)*)$/i)
+  if (m) {
+    const rest = m[4].split("-").filter(Boolean).map(capitalize)
+    return [capitalize(m[1]), `${m[2]}${m[3] ? `.${m[3]}` : ""}`, ...rest].join(" ")
+  }
   m = s.match(/^claude-(\d+(?:\.\d+)?)-(opus|sonnet|haiku|fable)((?:-[a-z0-9.]+)*)$/i)
   if (m) {
     const rest = m[3].split("-").filter(Boolean).map(capitalize)
@@ -39,6 +52,18 @@ export function agentLabel(harness, model) {
   const name = harnessName(harness)
   const label = modelLabel(model)
   return label ? `${name} - ${label}` : name
+}
+
+/**
+ * Where a Cursor chat was started, so the user knows where to continue it: the
+ * CLI (cursor-agent keeps a chat store for it, so it is resumable) or the app.
+ * null for the other harnesses.
+ */
+export function cursorClient(conversation) {
+  if (conversation?.harness !== "cursor") return null
+  return conversation.resumable
+    ? { id: "cli", label: "CLI", icon: "fa-terminal", hint: "Started in the Cursor CLI: continue it with cursor-agent --resume" }
+    : { id: "app", label: "App", icon: "fa-desktop", hint: "Started in the Cursor app: continue it in the Cursor app" }
 }
 
 export const STATUSES = {

@@ -276,6 +276,7 @@ body {
 
 .ah-segmented {
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   margin: 0 12px 8px;
   padding: 3px;
@@ -285,7 +286,7 @@ body {
 }
 
 .ah-segmented button {
-  flex: 1;
+  flex: 1 1 auto;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -369,16 +370,6 @@ body {
   min-width: 0;
 }
 
-.ah-project__icon {
-  color: var(--fgColor-muted, #59636e);
-  font-size: 13px;
-  width: 14px;
-}
-
-.ah-project.is-active .ah-project__icon {
-  color: var(--ah-active-bar);
-}
-
 .ah-project__name {
   flex: 1;
   min-width: 0;
@@ -401,7 +392,6 @@ body {
 }
 
 .ah-project__path {
-  padding-left: 22px;
   color: var(--fgColor-muted, #59636e);
   font-size: 11px;
   overflow: hidden;
@@ -414,7 +404,6 @@ body {
 .ah-project__counts {
   display: flex;
   gap: 10px;
-  padding-left: 22px;
   color: var(--fgColor-muted, #59636e);
   font-size: 11px;
 }
@@ -501,8 +490,41 @@ body {
   align-items: flex-start;
 }
 
-.ah-conv__top .ah-status {
+/* An error session: tinted, with a red mark that shows on hover. */
+.ah-conv.is-error {
+  background: var(--bgColor-danger-muted, rgba(255, 129, 130, 0.1));
+}
+
+.ah-conv.is-error:hover,
+.ah-conv.is-error.is-active {
+  background: var(--bgColor-danger-muted, rgba(255, 129, 130, 0.18));
+  box-shadow: inset 0 0 0 1px var(--borderColor-danger-muted, rgba(255, 129, 130, 0.4));
+}
+
+.ah-conv.is-error::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 3px;
+  background: var(--fgColor-danger, #d1242f);
+}
+
+.ah-conv__issue {
+  flex-shrink: 0;
   margin-top: 3px;
+  font-size: 13px;
+  color: var(--fgColor-danger, #d1242f);
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+
+.ah-conv:hover .ah-conv__issue,
+.ah-conv:focus-visible .ah-conv__issue,
+.ah-conv.is-active .ah-conv__issue {
+  opacity: 1;
 }
 
 .ah-conv__title {
@@ -521,7 +543,6 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding-left: 22px;
   color: var(--fgColor-muted, #59636e);
   font-size: 11px;
 }
@@ -534,6 +555,35 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Cursor: where the chat was started (CLI or app). */
+.ah-client {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--borderColor-default, #d1d9e0);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.ah-client--cli {
+  color: var(--fgColor-accent, #0969da);
+}
+
+.ah-client--app {
+  color: var(--fgColor-done, #8250df);
+}
+
+.ah-view__meta .ah-client {
+  padding: 1px 8px;
+  font-size: 12px;
+  line-height: 20px;
 }
 
 .ah-conv__tools {
@@ -1106,6 +1156,12 @@ body {
 .ah-popover__warn {
   margin: 8px 0 0;
   color: var(--fgColor-attention, #9a6700);
+  font-size: 12px;
+}
+
+.ah-popover__note {
+  margin: 0;
+  color: var(--fgColor-muted, #59636e);
   font-size: 12px;
 }
 
