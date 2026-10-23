@@ -1,0 +1,13 @@
+{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Friday, Oct 23, 2026, 1:46 PM (UTC+7)</timestamp>\n<user_query>\nadd a notes button\n</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"Looking at the table.\n\n[REDACTED]"},{"type":"tool_use","name":"Grep","input":{"pattern":"RCA","path":"/work/app/src"}}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Shell","input":{"command":"pnpm test"}}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"Added the **Notes** button."},{"type":"text","text":"[REDACTED]"}]}}
+{"type":"turn_ended","status":"success"}
+{"role":"user","message":{"content":[{"type":"text","text":"<manually_attached_skills>\n<skill>x</skill>\n</manually_attached_skills>\nshorter please"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"path":"/work/app/a.js"}}]}}
+{"type":"turn_ended","status":"error","error":"User aborted request"}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>try again</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"Done."}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<user_query>and commit</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Shell","input":{"command":"git commit"}}]}}
+{"type":"turn_ended","status":"error","error":"rate limited"}

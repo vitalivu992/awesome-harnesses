@@ -1,0 +1,21 @@
+{"type":"permission-mode","permissionMode":"default","sessionId":"s1"}
+{"type":"user","cwd":"/work/app","gitBranch":"main","isSidechain":false,"timestamp":"2026-10-20T10:00:00.000Z","message":{"role":"user","content":"add a health endpoint"}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:02.000Z","thinkingDurationMs":800,"message":{"model":"claude-opus-5-5","content":[{"type":"thinking","thinking":"Look at main.go first.","signature":"x"}],"stop_reason":"tool_use"}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:03.000Z","message":{"model":"claude-opus-5-5","content":[{"type":"text","text":"Reading the server."}],"stop_reason":"tool_use"}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:03.500Z","message":{"model":"claude-opus-5-5","content":[{"type":"tool_use","id":"toolu_1","name":"Read","input":{"file_path":"/work/app/main.go"}}],"stop_reason":"tool_use"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:04.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"package main"}]}}
+{"type":"assistant","cwd":"/work/app","isSidechain":true,"timestamp":"2026-10-20T10:00:04.500Z","message":{"model":"claude-haiku-5-5","content":[{"type":"text","text":"sidechain noise"}]}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:05.000Z","message":{"model":"claude-opus-5-5","content":[{"type":"tool_use","id":"toolu_2","name":"Bash","input":{"command":"go test ./..."}}],"stop_reason":"tool_use"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:09.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_2","content":[{"type":"text","text":"FAIL"}],"is_error":true}]}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:00:10.000Z","message":{"model":"claude-opus-5-5","content":[{"type":"text","text":"Added `GET /health`."}],"stop_reason":"end_turn"}}
+{"type":"ai-title","aiTitle":"Health endpoint","sessionId":"s1"}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:01:00.000Z","message":{"role":"user","content":"<command-name>/model</command-name>\n<command-message>model</command-message>\n<command-args></command-args>"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:01:01.000Z","message":{"role":"user","content":"<local-command-stdout>Set model to Sonnet 5.5</local-command-stdout>"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"isMeta":true,"timestamp":"2026-10-20T10:01:02.000Z","message":{"role":"user","content":"skill text the user never typed"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:02:00.000Z","message":{"role":"user","content":[{"type":"text","text":"now add tests<system-reminder>hidden</system-reminder>"}]}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:02:05.000Z","message":{"model":"claude-sonnet-5-5","content":[{"type":"tool_use","id":"toolu_3","name":"Write","input":{"file_path":"/work/app/main_test.go","content":"package main"}}],"stop_reason":"tool_use"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:02:06.000Z","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user for tool use]"}]}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"isCompactSummary":true,"timestamp":"2026-10-20T10:03:00.000Z","message":{"role":"user","content":"This session is being continued… Summary: tests"}}
+{"type":"user","cwd":"/work/app","isSidechain":false,"timestamp":"2026-10-20T10:04:00.000Z","message":{"role":"user","content":"retry"}}
+{"type":"assistant","cwd":"/work/app","isSidechain":false,"isApiErrorMessage":true,"timestamp":"2026-10-20T10:04:01.000Z","message":{"model":"<synthetic>","content":[{"type":"text","text":"Not logged in · Please run /login"}],"stop_reason":"stop_sequence"}}
+not json at all
