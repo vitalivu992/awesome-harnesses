@@ -1,0 +1,10 @@
+.env
+node_modules/
+test-results/
+playwright-report/
+playwright/.cache/
+*.log
+/bin/
+/web/dist/*
+!/web/dist/.gitkeep
+.e2e-home/

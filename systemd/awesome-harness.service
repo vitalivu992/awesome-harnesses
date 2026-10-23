@@ -1,0 +1,14 @@
+[Unit]
+Description=awesome-harness (browse Claude Code and Cursor conversations)
+Documentation=file://%h/Projects/linhvu_fortna/awesome-harness/README.md
+
+[Service]
+Type=exec
+WorkingDirectory=%h/Projects/linhvu_fortna/awesome-harness
+EnvironmentFile=-%h/Projects/linhvu_fortna/awesome-harness/.env
+ExecStart=%h/Projects/linhvu_fortna/awesome-harness/bin/server
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
