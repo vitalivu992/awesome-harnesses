@@ -1,0 +1,128 @@
+import { useMemo, useState } from "react"
+import { harnessName, longDateTime, modelLabel, plural, relativeTime, shortDateTime } from "../lib/format.js"
+import { HarnessIcon } from "./HarnessIcon.jsx"
+import { StatusIcon } from "./StatusIcon.jsx"
+
+const HARNESS_FILTERS = [
+  { id: "", label: "All" },
+  { id: "claude", label: "Claude Code" },
+  { id: "cursor", label: "Cursor" },
+]
+
+/** Conversations of one harness ("" = any) whose title or model contains `text`. */
+export function filterConversations(conversations, { harness = "", text = "" } = {}) {
+  const needle = String(text || "").trim().toLowerCase()
+  return (conversations || []).filter((c) => {
+    if (harness && c.harness !== harness) return false
+    if (!needle) return true
+    return [c.title, c.id, c.gitBranch, ...(c.models || []).map(modelLabel)].some((v) =>
+      String(v || "").toLowerCase().includes(needle)
+    )
+  })
+}
+
+/** Second column: the selected project's conversations, newest first. */
+export function ConversationList({ project, conversations, loading, error, selectedId, onSelect, onRefresh }) {
+  const [text, setText] = useState("")
+  const [harness, setHarness] = useState("")
+  const shown = useMemo(() => filterConversations(conversations, { harness, text }), [conversations, harness, text])
+  const counts = useMemo(() => {
+    const c = { "": conversations?.length || 0, claude: 0, cursor: 0 }
+    for (const conv of conversations || []) c[conv.harness] = (c[conv.harness] || 0) + 1
+    return c
+  }, [conversations])
+
+  if (!project) {
+    return (
+      <section className="ah-convs" aria-label="Conversations">
+        <p className="ah-empty ah-empty--center">Select a project.</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="ah-convs" aria-label="Conversations">
+      <header className="ah-panel-head">
+        <div className="ah-convs__project" title={project.path}>
+          <span className="ah-convs__name">{project.name}</span>
+          {project.path ? (
+            <span className="ah-convs__path">
+              <bdi>{project.path}</bdi>
+            </span>
+          ) : null}
+        </div>
+        <button type="button" className="ah-icon-btn" onClick={onRefresh} title="Reload" aria-label="Reload conversations">
+          <i className={`fa-solid fa-rotate${loading ? " fa-spin" : ""}`} aria-hidden="true"></i>
+        </button>
+      </header>
+      <div className="ah-search">
+        <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>
+        <input
+          type="search"
+          placeholder="Filter by title, model, branch"
+          aria-label="Filter conversations"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+      </div>
+      <div className="ah-segmented" role="group" aria-label="Harness">
+        {HARNESS_FILTERS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className={harness === f.id ? "is-active" : ""}
+            aria-pressed={harness === f.id}
+            disabled={f.id && !counts[f.id]}
+            onClick={() => setHarness(f.id)}
+          >
+            {f.id ? <HarnessIcon harness={f.id} size={12} /> : null}
+            {f.label}
+            <span className="ah-count">{counts[f.id] || 0}</span>
+          </button>
+        ))}
+      </div>
+      {error ? <p className="ah-error">Could not load conversations: {error.message}</p> : null}
+      {loading && !conversations ? <p className="ah-empty">Loading conversations…</p> : null}
+      <ul className="ah-list" id="ahConversations">
+        {shown.map((c) => {
+          const key = `${c.harness}:${c.id}`
+          const model = modelLabel(c.models?.[c.models.length - 1])
+          return (
+            <li key={key}>
+              <button
+                type="button"
+                className={`ah-conv${key === selectedId ? " is-active" : ""}`}
+                aria-current={key === selectedId ? "true" : undefined}
+                data-conversation={key}
+                onClick={() => onSelect(key)}
+              >
+                <span className="ah-conv__top">
+                  <StatusIcon status={c.status} active={c.active} />
+                  <span className="ah-conv__title">{c.title}</span>
+                </span>
+                <span className="ah-conv__meta">
+                  <span className="ah-conv__agent" title={harnessName(c.harness)}>
+                    <HarnessIcon harness={c.harness} size={12} />
+                    {model || harnessName(c.harness)}
+                  </span>
+                  <span title={`${plural(c.turns, "prompt")}, ${plural(c.toolCalls, "tool call")}`}>
+                    <i className="fa-regular fa-comment" aria-hidden="true"></i> {c.turns}
+                    <i className="fa-solid fa-wrench ah-conv__tools" aria-hidden="true"></i> {c.toolCalls}
+                  </span>
+                  <time
+                    className="ah-conv__when"
+                    dateTime={c.updatedAt}
+                    title={`Started ${longDateTime(c.startedAt)}\nUpdated ${longDateTime(c.updatedAt)} (${relativeTime(c.updatedAt)})`}
+                  >
+                    {shortDateTime(c.updatedAt)}
+                  </time>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+        {conversations && !shown.length ? <li className="ah-empty">No conversations match.</li> : null}
+      </ul>
+    </section>
+  )
+}
