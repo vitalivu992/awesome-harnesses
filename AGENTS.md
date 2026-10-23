@@ -11,10 +11,12 @@ go test ./...               # Go tests (parsers, catalog, api)
 pnpm test:unit              # vitest (tests/*.test.mjs; JSX helpers import fine)
 pnpm test:e2e               # playwright: e2e/make-fixtures.mjs writes a fake home to .e2e-home/,
                             # then the config starts the server on :8768 over it — every harness
-                            # location env var must point there (add one when adding a harness)
+                            # location env var must point there (add one when adding a harness).
+                            # It runs `go run -tags e2e`: the login accepts demo / demo-password
 ```
 
-JS tooling is **pnpm**. `@playwright/test` is pinned to 1.60.0 to match the browsers installed
+The server needs cgo on Linux (PAM headers, `libpam0g-dev`) and macOS (Xcode CLT); Windows
+is pure Go (`GOOS=windows go build ./cmd/server` cross-compiles). JS tooling is **pnpm**. `@playwright/test` is pinned to 1.60.0 to match the browsers installed
 on this machine. `web/dist/.gitkeep` keeps the embed pattern valid on a fresh clone; run
 `make web` before building for real pages.
 
@@ -77,6 +79,16 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   `Conversation` looks the id up among the listed items (ids validated first). Adding a
   harness: parser package → constant in `conv` → lister + `parse` case + `Config` field (+ env
   var in `cmd/server`, e2e config) → `HARNESSES`, resume spec, icon in the frontend.
+- `internal/auth` — login in front of the API. `Handler.Guard` answers 401 to `/api/*` without
+  a session (except `/api/auth/*`; the bundle and `/health` stay public). `POST /api/auth/login`
+  (JSON only, a CSRF guard) runs the `Authenticator` one at a time, then sets `ah_session`:
+  HttpOnly, SameSite=Strict, no expiry (gone when the browser exits); sessions are an in-memory
+  map keyed by the token's sha256. `System(service)` is the OS password check, one file per OS:
+  `pam.go` (Linux + macOS: cgo, a C conversation function, no Go callbacks; `PAM_SERVICE`,
+  default `login`; only the server's user, compared after PAM so timing is the same) and
+  `logon_windows.go` (`LogonUserW` network logon via advapi32, same account compared by SID,
+  2 s delay on failure). `system_e2e.go` (build tag `e2e`) replaces both with
+  demo / demo-password for Playwright.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
   `GET /api/conversations/{harness}/{id}`. `cmd/server` adds gzip for `/api/*` and an access log,
   and listens on `HOST` (default `127.0.0.1`).
@@ -84,9 +96,14 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
 
 ### Frontend (`src/`)
 
-- `App.jsx` — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
+- `App.jsx` — `AuthGate` asks `/api/auth/session`, shows `LoginScreen` or the browser; a 401 from
+  any API call (`LOGGED_OUT_EVENT` in `lib/api.js`) returns to the login. Right after a login the
+  browser mounts under `LoginScreen`, which plays the unlock sequence (redaction bars from
+  `lib/redaction.js` peel away, welcome line, aperture via the `--ah-hole` `@property`; click or
+  key skips; reduced motion = fade) — `UNLOCK_MS` matches the CSS timings.
+- `App.jsx` (browser) — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
   `useFetch` aborts stale loads.
-- `components/` — `ProjectsPanel` (collapsible rail), `ConversationList`, `ConversationView`
+- `components/` — `ProjectsPanel` (collapsible rail; user + **Log out** in the footer), `ConversationList`, `ConversationView`
   (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
   collapsed by default, global Show/Hide work), `Step` (thinking/note/tool rows; tool input shown
   as shell/diff/JSON, output on click), `ResumeButton`, `Markdown` (markdown-it + hljs + GitHub

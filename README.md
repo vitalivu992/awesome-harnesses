@@ -22,12 +22,24 @@ make build && ./bin/server
 
 `make` alone lists every target.
 
-Open http://127.0.0.1:8767.
+Open http://127.0.0.1:8767 and log in with the username and password of your computer
+account (the ones of your desktop session).
+
+Building:
+
+| OS | Password check | Needs to build |
+|---|---|---|
+| Linux | PAM | cgo + PAM headers (`sudo apt install libpam0g-dev` on Debian/Ubuntu) |
+| macOS | PAM (OpenPAM / Open Directory) | cgo: Xcode command line tools (`xcode-select --install`) |
+| Windows | `LogonUserW` | nothing extra (pure Go) |
+
+`make up` / `install` use systemd (Linux only); elsewhere run `make build && ./bin/server`.
 
 | Setting (env or `.env`) | Default | |
 |---|---|---|
 | `HOST` | `127.0.0.1` | Transcripts hold code, prompts and secrets: keep it on loopback. |
 | `PORT` | `8767` | |
+| `PAM_SERVICE` | `login` | Linux, macOS: PAM service that checks the password (`/etc/pam.d/<name>`). |
 | `CLAUDE_DIR` | `~/.claude` | |
 | `CURSOR_DIR` | `~/.cursor` | |
 | `CURSOR_LOGS_DIR` | `~/.cursor-server/data/logs` | Cursor server logs: model and turn times of Cursor app chats. |
@@ -37,6 +49,22 @@ Open http://127.0.0.1:8767.
 | `KILO_DB` | `$XDG_DATA_HOME/kilo/kilo.db` (`~/.local/share/…`) | |
 
 A harness that isn't installed simply has no conversations.
+
+## Login
+
+Every API call needs a login. The server asks the OS to check the password, like a console
+or desktop login: PAM on Linux and macOS, `LogonUserW` on Windows. It lets in only the user
+it runs as, because the transcripts are that user's files. A wrong password takes 2–3 s to
+answer, and the server checks one password at a time.
+
+- macOS: use the short account name (`whoami`), not the full name.
+- Windows: `name`, `DOMAIN\name` or `name@domain` all work. Windows Hello (PIN, fingerprint)
+  can't be checked: use the account password — for a Microsoft account, its email and online
+  password. Failed logins count towards the Windows account lockout policy.
+
+The session is a cookie with no expiry: it ends when you quit the browser, when you click
+**Log out** (bottom of the projects panel), or when the server restarts (sessions are kept
+in memory). A browser that restores the last session on start also restores this cookie.
 
 ## The UI
 
