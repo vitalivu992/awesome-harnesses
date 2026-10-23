@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"awesome-harness/internal/api"
+	"awesome-harness/internal/auth"
 	"awesome-harness/internal/catalog"
 	"awesome-harness/web"
 )
@@ -33,7 +34,17 @@ func main() {
 	cfg.OpenCodeDB = env("OPENCODE_DB", cfg.OpenCodeDB)
 	cfg.KiloDB = env("KILO_DB", cfg.KiloDB)
 
+	// Every /api/* route but the login ones needs a session: the password is
+	// checked by the OS, as for a desktop login (PAM_SERVICE: Linux and macOS).
+	pamService := env("PAM_SERVICE", "login")
+	authenticate, err := auth.System(pamService)
+	if err != nil {
+		log.Fatal(err)
+	}
+	login := &auth.Handler{Auth: authenticate}
+
 	mux := http.NewServeMux()
+	login.Register(mux)
 	(&api.Handler{Catalog: catalog.New(cfg)}).Register(mux)
 	// The single-page app: bundle files, else index.html for client routes.
 	// It 404s /health and /api/* paths no pattern above matched.
@@ -50,7 +61,7 @@ func main() {
 		cfg.ClaudeDir, cfg.CursorDir, cfg.CodexDir, cfg.PiDir, cfg.OpenCodeDB, cfg.KiloDB)
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           logRequests(gzipJSON(mux)),
+		Handler:           logRequests(gzipJSON(login.Guard(mux))),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	log.Fatal(srv.ListenAndServe())

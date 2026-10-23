@@ -1,11 +1,19 @@
 import { useCallback, useEffect, useState } from "react"
 import { BrowserRouter, Route, Routes, useSearchParams } from "react-router"
-import { fetchConversation, fetchConversations, fetchProjects } from "./lib/api.js"
+import {
+  LOGGED_OUT_EVENT,
+  fetchConversation,
+  fetchConversations,
+  fetchProjects,
+  fetchSession,
+  logout,
+} from "./lib/api.js"
 import { readPrefs, writePref } from "./lib/prefs.js"
 import { useFetch } from "./hooks/useFetch.js"
 import { ProjectsPanel } from "./components/ProjectsPanel.jsx"
 import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
+import { LoginScreen } from "./components/LoginScreen.jsx"
 
 /** "claude:<id>" → ["claude", "<id>"]. */
 export function splitConversationKey(key) {
@@ -19,7 +27,7 @@ export function splitConversationKey(key) {
  * in the URL (`?project=<key>&c=<harness>:<id>`), so a conversation can be
  * linked to and the back button works.
  */
-function Browser() {
+function Browser({ user, onLogout }) {
   const [params, setParams] = useSearchParams()
   const projectKey = params.get("project") || ""
   const convKey = params.get("c") || ""
@@ -70,6 +78,8 @@ function Browser() {
         collapsed={collapsed}
         onToggle={toggleCollapsed}
         onRefresh={() => setProjectsReload((n) => n + 1)}
+        user={user}
+        onLogout={onLogout}
       />
       <ConversationList
         key={projectKey}
@@ -92,11 +102,62 @@ function Browser() {
   )
 }
 
+/**
+ * The login gate: the browser only mounts with a session. Right after a login
+ * it mounts under the login screen, which plays its unlock sequence on top
+ * while the projects load.
+ */
+function AuthGate() {
+  // undefined: still asking the server; null: logged out.
+  const [user, setUser] = useState(undefined)
+  const [unlocking, setUnlocking] = useState(false)
+
+  useEffect(() => {
+    const ctrl = new AbortController()
+    fetchSession({ signal: ctrl.signal }).then(
+      (u) => setUser(u),
+      () => !ctrl.signal.aborted && setUser(null)
+    )
+    const loggedOut = () => setUser(null)
+    window.addEventListener(LOGGED_OUT_EVENT, loggedOut)
+    return () => {
+      ctrl.abort()
+      window.removeEventListener(LOGGED_OUT_EVENT, loggedOut)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (user === null) document.title = "Log in · awesome-harness"
+  }, [user])
+
+  const onLogin = useCallback((u) => {
+    setUnlocking(true)
+    setUser(u)
+  }, [])
+  const onUnlocked = useCallback(() => setUnlocking(false), [])
+  const onLogout = useCallback(async () => {
+    try {
+      await logout()
+    } finally {
+      setUnlocking(false)
+      setUser(null)
+    }
+  }, [])
+
+  if (user === undefined) return null
+  return (
+    <>
+      {user ? <Browser user={user} onLogout={onLogout} /> : null}
+      {!user || unlocking ? <LoginScreen unlockedAs={user} onLogin={onLogin} onDone={onUnlocked} /> : null}
+    </>
+  )
+}
+
 export function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="*" element={<Browser />} />
+        <Route path="*" element={<AuthGate />} />
       </Routes>
     </BrowserRouter>
   )

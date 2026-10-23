@@ -3,6 +3,12 @@ import { resolve } from "node:path"
 
 const PROJECT = resolve(".e2e-home/work/demo_app")
 
+// page.request shares the page's cookies, so the session cookie applies to the page.
+test.beforeEach(async ({ page }) => {
+  const res = await page.request.post("/api/auth/login", { data: { username: "demo", password: "demo-password" } })
+  expect(res.ok()).toBeTruthy()
+})
+
 test("browses a project's Claude Code and Cursor conversations", async ({ page }) => {
   await page.goto("/")
   // The most recent project opens by itself and lists both harnesses.

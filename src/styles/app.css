@@ -117,8 +117,22 @@ body {
 }
 
 .ah-panel-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   border-top: 1px solid var(--borderColor-muted, #d8dee4);
   padding: 6px 8px;
+}
+
+.ah-user {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: right;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
 }
 
 .ah-brand {
@@ -1262,4 +1276,323 @@ body {
 [data-color-mode="dark"] .ah-harness-icon--cursor {
   background: #e6edf3;
   padding: 1px;
+}
+
+/* ---------- login and the unlock sequence ----------
+   The backdrop is chat lines (prompts right, answers left) under redaction
+   bars. On login the bars peel away along a diagonal (--d per line), the
+   welcome line writes in, then an aperture (--ah-hole) opens onto the app
+   mounted underneath. LoginScreen.jsx's UNLOCK_MS is the end of the aperture. */
+
+@property --ah-hole {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+:root {
+  --ah-login-bg: #e9edf6;
+  --ah-login-cover: #c8d0e3;
+  --ah-login-ink: #18203a;
+  --ah-login-muted: #4b5675;
+  --ah-login-card: rgba(255, 255, 255, 0.88);
+  --ah-login-edge: rgba(24, 32, 58, 0.14);
+  --ah-login-input: #fff;
+  --ah-login-error: #b42318;
+}
+
+[data-color-mode="dark"] {
+  --ah-login-bg: #0e1430;
+  --ah-login-cover: #1b2448;
+  --ah-login-ink: #e6e9f5;
+  --ah-login-muted: #9aa3c2;
+  --ah-login-card: rgba(20, 27, 58, 0.86);
+  --ah-login-edge: rgba(230, 233, 245, 0.12);
+  --ah-login-input: #0b1027;
+  --ah-login-error: #ff8a80;
+}
+
+.ah-login {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--ah-login-bg);
+  color: var(--ah-login-ink);
+}
+
+.ah-login__field {
+  position: absolute;
+  inset: -24px 0;
+}
+
+.ah-login__drift {
+  display: flex;
+  flex-direction: column;
+  height: calc(100% + 48px);
+  padding: 0 4vw;
+  animation: ah-drift 26s ease-in-out infinite alternate;
+}
+
+@keyframes ah-drift {
+  to {
+    transform: translateY(-48px);
+  }
+}
+
+.ah-login__row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ah-login__row--right {
+  justify-content: flex-end;
+}
+
+.ah-login__line {
+  position: relative;
+  width: var(--w);
+  height: 9px;
+  border-radius: 5px;
+  background: var(--c);
+  opacity: 0.85;
+}
+
+/* The redaction bar over each line. */
+.ah-login__line::after {
+  content: "";
+  position: absolute;
+  inset: -2px -1px;
+  border-radius: 5px;
+  background: var(--ah-login-cover);
+  transform-origin: right center;
+}
+
+.ah-login__card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: min(380px, calc(100vw - 32px));
+  padding: 28px 28px 20px;
+  border: 1px solid var(--ah-login-edge);
+  border-radius: 16px;
+  background: var(--ah-login-card);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 24px 60px -24px rgba(14, 20, 48, 0.45);
+}
+
+.ah-login__mark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ah-login-muted);
+  font-weight: 600;
+}
+
+.ah-login__title {
+  margin: 14px 0 6px;
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.ah-login__hint {
+  margin: 0 0 18px;
+  color: var(--ah-login-muted);
+  line-height: 1.5;
+}
+
+.ah-login__label {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+
+.ah-login__input {
+  margin-bottom: 14px;
+  padding: 9px 12px;
+  border: 1px solid var(--ah-login-edge);
+  border-radius: 8px;
+  background: var(--ah-login-input);
+  color: var(--ah-login-ink);
+  font: inherit;
+  font-size: 15px;
+}
+
+.ah-login__input:focus-visible,
+.ah-login__submit:focus-visible {
+  outline: 2px solid #7c8cff;
+  outline-offset: 2px;
+}
+
+.ah-login__error {
+  margin: -4px 0 14px;
+  color: var(--ah-login-error);
+  line-height: 1.4;
+}
+
+.ah-login__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ah-login-ink);
+  color: var(--ah-login-bg);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ah-login__submit:disabled {
+  cursor: progress;
+  opacity: 0.8;
+}
+
+.ah-login__harnesses {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+  opacity: 0.7;
+}
+
+/* The unlock: card out, bars peel, welcome writes in, aperture opens. */
+
+.ah-login.is-unlocking {
+  cursor: pointer;
+  mask-image: radial-gradient(circle at 50% 50%, transparent var(--ah-hole), #000 calc(var(--ah-hole) + 1px));
+  animation: ah-aperture 760ms cubic-bezier(0.7, 0, 0.3, 1) 1600ms forwards;
+}
+
+@keyframes ah-aperture {
+  to {
+    --ah-hole: 150vmax;
+  }
+}
+
+.is-unlocking .ah-login__drift {
+  animation-play-state: paused;
+}
+
+.is-unlocking .ah-login__card {
+  pointer-events: none;
+  animation: ah-card-out 420ms cubic-bezier(0.4, 0, 0.2, 1) 120ms forwards;
+}
+
+@keyframes ah-card-out {
+  to {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.96);
+    filter: blur(6px);
+  }
+}
+
+.is-unlocking .ah-login__line {
+  opacity: 1;
+  box-shadow: 0 0 14px -2px var(--c);
+}
+
+.is-unlocking .ah-login__line::after {
+  animation: ah-peel 460ms cubic-bezier(0.7, 0, 0.2, 1) var(--d) forwards;
+}
+
+@keyframes ah-peel {
+  to {
+    transform: scaleX(0);
+  }
+}
+
+.ah-login__welcome {
+  position: absolute;
+  margin: 0;
+  padding: 0.3em 0.6em;
+  border-radius: 0.4em;
+  background: radial-gradient(closest-side, var(--ah-login-bg) 55%, transparent);
+  font-size: clamp(30px, 6vw, 72px);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  white-space: nowrap;
+}
+
+.ah-login__welcome span {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.35em);
+  filter: blur(8px);
+  animation: ah-letter 420ms cubic-bezier(0.2, 0.7, 0.2, 1) calc(380ms + var(--i) * 26ms) forwards;
+}
+
+@keyframes ah-letter {
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+/* A harness-coloured rim just outside the aperture's edge. */
+.ah-login__ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: calc(var(--ah-hole) * 2 + 10px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  translate: -50% -50%;
+  background: conic-gradient(#d97757, #e8b931, #10a37f, #7c8cff, #f06292, #d97757);
+  mask-image: radial-gradient(closest-side, transparent calc(100% - 5px), #000 calc(100% - 5px));
+  opacity: 0;
+  animation: ah-rim 760ms linear 1600ms forwards;
+}
+
+@keyframes ah-rim {
+  10%,
+  80% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    rotate: 120deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ah-login__drift,
+  .is-unlocking .ah-login__card,
+  .is-unlocking .ah-login__line::after,
+  .ah-login__welcome span,
+  .ah-login__ring {
+    animation: none;
+  }
+
+  .ah-login__welcome span {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  .is-unlocking .ah-login__card {
+    visibility: hidden;
+  }
+
+  .ah-login.is-unlocking {
+    mask-image: none;
+    animation: ah-fade 300ms ease 300ms forwards;
+  }
+}
+
+@keyframes ah-fade {
+  to {
+    opacity: 0;
+  }
 }

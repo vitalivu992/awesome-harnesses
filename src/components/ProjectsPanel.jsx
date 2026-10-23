@@ -21,11 +21,38 @@ export function filterProjects(projects, text) {
   return projects.filter((p) => `${p.name} ${p.path}`.toLowerCase().includes(needle))
 }
 
+function LogoutButton({ user, onLogout, compact = false }) {
+  return (
+    <button
+      type="button"
+      className="ah-icon-btn ah-logout"
+      id={compact ? undefined : "ahLogout"}
+      onClick={onLogout}
+      title={`Logged in as ${user}. Log out`}
+      aria-label="Log out"
+    >
+      <i className="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
+      {compact ? null : <span>Log out</span>}
+    </button>
+  )
+}
+
 /**
  * First column: every project with agent conversations, with a count per harness. Collapses to
  * a rail of initials badges.
  */
-export function ProjectsPanel({ projects, loading, error, selectedKey, onSelect, collapsed, onToggle, onRefresh }) {
+export function ProjectsPanel({
+  projects,
+  loading,
+  error,
+  selectedKey,
+  onSelect,
+  collapsed,
+  onToggle,
+  onRefresh,
+  user,
+  onLogout,
+}) {
   const [text, setText] = useState("")
   const shown = useMemo(() => filterProjects(projects || [], text), [projects, text])
 
@@ -53,6 +80,7 @@ export function ProjectsPanel({ projects, loading, error, selectedKey, onSelect,
           ))}
         </ul>
         <ThemeToggle compact />
+        <LogoutButton user={user} onLogout={onLogout} compact />
       </nav>
     )
   }
@@ -119,6 +147,10 @@ export function ProjectsPanel({ projects, loading, error, selectedKey, onSelect,
       </ul>
       <footer className="ah-panel-foot">
         <ThemeToggle />
+        <span className="ah-user" title={`Logged in as ${user}`}>
+          <i className="fa-solid fa-circle-user" aria-hidden="true"></i> {user}
+        </span>
+        <LogoutButton user={user} onLogout={onLogout} />
       </footer>
     </nav>
   )
