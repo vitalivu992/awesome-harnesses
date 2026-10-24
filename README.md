@@ -12,13 +12,21 @@ This is not a live view: use the reload buttons to pick up new messages.
 ## Run
 
 ```bash
-make up          # start the background service (builds + installs the user systemd unit the first time)
+make up          # start the background service (builds + installs it the first time)
 make down        # stop it
 make install     # rebuild and restart after pulling changes
+make status      # is it running?
 make logs        # follow the service log
-# or, without systemd:
-make build && ./bin/server
+# or in the foreground:
+make run         # build, then run bin/server with .env applied
 ```
+
+The Makefile targets call `./ctl.sh` (`./ctl.sh help`), which you can also run directly. The
+service is per-user: a systemd user unit on Linux (`systemd/awesome-harness.service`,
+log in the journal) and a launchd agent on macOS (`~/Library/LaunchAgents/dev.awesome-harness.plist`,
+generated with this checkout's path; log in `~/Library/Logs/awesome-harness.log`). Both start
+at login and restart after a crash. `make install` creates `.env` from `.env.example` the
+first time; the service reads it at every start, so edit it and `make restart`.
 
 `make` alone lists every target.
 
@@ -33,7 +41,8 @@ Building:
 | macOS | PAM (OpenPAM / Open Directory) | cgo: Xcode command line tools (`xcode-select --install`) |
 | Windows | `LogonUserW` | nothing extra (pure Go) |
 
-`make up` / `install` use systemd (Linux only); elsewhere run `make build && ./bin/server`.
+`make up` / `install` use systemd on Linux and launchd on macOS; on Windows run
+`go build -o bin/server.exe ./cmd/server` after `pnpm build`, and start `bin\server.exe`.
 
 | Setting (env or `.env`) | Default | |
 |---|---|---|
