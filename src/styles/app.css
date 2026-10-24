@@ -1278,6 +1278,12 @@ body {
   padding: 1px;
 }
 
+/* The pi mark is near-black (pi.dev switches it with the OS scheme, which an
+   <img> can't follow from the app's theme): invert it on dark backgrounds. */
+[data-color-mode="dark"] .ah-harness-icon--pi {
+  filter: invert(1);
+}
+
 /* ---------- login and the unlock sequence ----------
    The backdrop is chat lines (prompts right, answers left) under redaction
    bars. On login the bars peel away along a diagonal (--d per line), the
