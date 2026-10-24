@@ -59,6 +59,7 @@ type Manager struct {
 
 	mu     sync.Mutex
 	shells map[string]*session
+	last   int // the newest shell's tab number
 }
 
 type message struct {
@@ -132,7 +133,8 @@ func (m *Manager) Start(dir, run string) (Info, error) {
 	if m.shells == nil {
 		m.shells = map[string]*session{}
 	}
-	s.info.N = m.freeNumber()
+	m.last++
+	s.info.N = m.last
 	m.shells[s.info.ID] = s
 	m.mu.Unlock()
 
@@ -158,19 +160,6 @@ func (m *Manager) StopAll() {
 	for _, info := range m.List() {
 		m.Stop(info.ID)
 	}
-}
-
-// freeNumber is the lowest tab number not in use. m.mu is held.
-func (m *Manager) freeNumber() int {
-	used := map[int]bool{}
-	for _, s := range m.shells {
-		used[s.info.N] = true
-	}
-	n := 1
-	for used[n] {
-		n++
-	}
-	return n
 }
 
 func (m *Manager) get(id string) *session {

@@ -160,7 +160,7 @@ func TestShell(t *testing.T) {
 		t.Fatalf("list = %+v", got)
 	}
 
-	// Closing a running shell ends it; its number is free again.
+	// Closing a running shell ends it; numbers keep counting up.
 	if !m.Stop(second.ID) || !m.Stop(first.ID) {
 		t.Fatal("Stop = false")
 	}
@@ -171,8 +171,8 @@ func TestShell(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if third.N != 1 {
-		t.Fatalf("number = %d, want 1", third.N)
+	if third.N != 3 {
+		t.Fatalf("number = %d, want 3", third.N)
 	}
 }
 
