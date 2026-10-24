@@ -14,7 +14,8 @@ go test ./...               # Go tests (parsers, catalog, api)
 pnpm test:unit              # vitest (tests/*.test.mjs; JSX helpers import fine)
 pnpm test:e2e               # playwright: e2e/make-fixtures.mjs writes a fake home to .e2e-home/,
                             # then the config starts the server on :8768 over it — every harness
-                            # location env var must point there (add one when adding a harness).
+                            # location env var must point there (add one when adding a harness),
+                            # and LAUNCH_PATH at its bin/ (a fake `claude` that echoes prompts).
                             # It runs `go run -tags e2e`: the login accepts demo / demo-password
 ```
 
@@ -25,7 +26,8 @@ on this machine. `web/dist/.gitkeep` keeps the embed pattern valid on a fresh cl
 
 ## Architecture
 
-Read-only Go server + React SPA, one binary, plus the terminal panel's shells (`internal/shell`). No database of its own: transcripts (and the
+Read-only Go server + React SPA, one binary, plus the terminal panel's shells (`internal/shell`)
+and the prompt runs (`internal/runs`), which start the harness CLIs headless. No database of its own: transcripts (and the
 OpenCode/Kilo databases) are read on request and summaries cached in memory by file size + mtime
 (session update time for database rows). Harness ids (`conv.Claude` … `conv.Kilo`) are the same
 strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
@@ -78,11 +80,13 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   (`resolveSlug`; `-` can stand for `/ - _ .` or space), then a Claude path with the same slug,
   then `guessSlug` (deepest existing dir + rest); Codex/pi from their first line (memoized in
   `heads`); OpenCode/Kilo from `session.directory`. Projects merge on that path; no path →
-  `no-workspace`. `enrich` adds what the source lacks (cwd = project dir, Cursor resumability /
+  `no-workspace`. `Project.Running` / `Finished` count conversations that are active with an `incomplete` / ended
+  last turn (only active items are summarized, so listing stays cheap). `enrich` adds what the source lacks (cwd = project dir, Cursor resumability /
   model / creation time, Codex thread names, active flag). Sessions with zero turns are hidden.
   `Conversation` looks the id up among the listed items (ids validated first). Adding a
   harness: parser package → constant in `conv` → lister + `parse` case + `Config` field (+ env
-  var in `cmd/server`, e2e config) → `HARNESSES`, resume spec, icon in the frontend.
+  var in `cmd/server`, e2e config) → `HARNESSES`, resume spec, icon in the frontend →
+  `launch.Harnesses` + a `Build` case + its `Commands` folders (+ a `Models` lister).
 - `internal/auth` — login in front of the API. `Handler.Guard` answers 401 to `/api/*` without
   a session (except `/api/auth/*`; the bundle and `/health` stay public). `POST /api/auth/login`
   (JSON only, a CSRF guard) runs the `Authenticator` one at a time, then sets `ah_session`:
@@ -108,6 +112,30 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   the e2e shell spec runs in its own project after the others. `cmd/server` strips its own
   settings (`serverVars`) from the shells' environment, skips gzip for upgrades, and
   `statusWriter.Unwrap` lets the upgrade hijack.
+- `internal/launch` — pure: `Build(Request, cmds, newID)` → `Plan` (argv, cwd, session, display
+  `Command`, `Notes`) for `claude -p`, `codex exec [resume] --json`, `cursor-agent -p
+  --output-format stream-json --trust`, `pi -p`, `opencode|kilo run --format json`. The browser
+  sends only structured fields (model/effort validated as tokens, never a leading `-`; the
+  prompt goes after `--`). Claude and pi take a new id (`--session-id`); the others report it
+  in their JSON output. `Harnesses` = CLI, efforts, fast mode, bypass flag per harness.
+  `Commands(harness, cwd, Dirs)` lists slash commands and skills (Claude: user/project
+  commands + skills, enabled plugins as `/plugin:<folder>`, account-synced skills as
+  `/anthropic-skills:<name>`; Codex `$skill` + `/prompts:`; pi `/template` + `/skill:`; Cursor,
+  OpenCode, Kilo their folders); `expand` rewrites what the CLI won't expand itself (template
+  text with `$ARGUMENTS`/`$1`, OpenCode/Kilo `--command`, skills → "use your skill" line).
+  `Models` = settings suggestions (Claude aliases, Codex `models_cache.json` with per-model
+  efforts, the other CLIs' model listings parsed).
+- `internal/runs` — `Manager`: `POST /api/runs` (JSON only — no CORS preflight answer = no
+  cross-site runs) checks a continued conversation in the catalog (its cwd wins; Cursor app
+  chats refused; one running prompt per conversation → 409), builds the plan and starts the CLI
+  in its own process group, stdin null. Stdout JSONL gives the new session id and error
+  events; the stderr tail is the error otherwise. `DELETE` = SIGINT to the group, SIGKILL
+  after 5 s. Ended runs stay listed 15 min. CLIs are looked up in `LAUNCH_PATH`, else the login
+  shell's PATH (`$SHELL -l -i -c`, cached 5 min) — a systemd service's PATH lacks nvm and
+  `~/.local/bin`; found paths are made absolute (`cmd.Dir` would resolve a relative one).
+  Also `GET /api/harnesses` (+ `found`), `/{id}/models` (cached 10 min), `/{id}/commands?cwd=`,
+  `POST /api/runs/preview` (a new session shows `new-session-uuid`; no cwd → home). Runs
+  survive logout.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
   `GET /api/conversations/{harness}/{id}` (ETag = `Catalog.ConversationIfChanged` version: size +
   mtime + active flag, so it also changes when the active window passes; `If-None-Match` → 304
@@ -125,22 +153,44 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   A logout runs it the other way: `LoginScreen locking` mounts over the still-mounted browser
   (backdrop blurs and turns opaque, then the form fades in; `LOCK_MS`), the browser unmounts
   once both the logout request and `LOCK_MS` are done; `LOGGED_OUT_EVENT`s are ignored meanwhile.
-- `App.jsx` (browser) — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
-  `useFetch` aborts stale loads. `hooks/useLiveConversation.js` loads the open conversation and
+- `App.jsx` (browser) — three columns (a fourth while Settings is open); the selection is in the URL
+  (`?project=<key>&c=<harness>:<id>`, `&new=<harness>` for the new-conversation page).
+  `useFetch` aborts stale loads; its `poll(data)` option reloads quietly (no spinner, errors
+  keep the data, paused while hidden): both lists use `listPollDelay` (4 s while something is
+  running/active, else 15 s). `components/Running.jsx`: `RunningBar` (Windows 11 indeterminate
+  bar on the view header's bottom edge; static under reduced motion) and `LiveIcon` on project /
+  conversation rows (`lib/live.js` `liveState`: pulsing broadcast = working, green check = active
+  but the last turn ended; projects from `running` / `finished`; a dot on rail badges).
+  `hooks/useLiveConversation.js` loads the open conversation and
   polls it with its ETag (`lib/live.js` `pollDelay`: 2 s while active, 15 s otherwise, paused
   while the page is hidden). `isWorking` = active + last turn `incomplete`: `ConversationView`
   then shows the work, marks the last turn "Working…" and keeps the chat at the bottom if it was
   there; when it flips back the work collapses. `e2e/live.spec.js` appends to a transcript
   mid-test, in its own Playwright project (chromium → live → shells) because it adds the newest project.
+- Prompts: `components/Runs.jsx` `RunsProvider` (`/api/runs`, polled 1.5 s while one runs;
+  `start` remembers the conversation's turn count, so `ConversationView` shows the prompt as
+  sent until the transcript has more turns; `runFor(harness, id)`). `useLiveConversation(…,
+  {running})` polls fast and treats a 404 as "not written yet". `Composer.jsx` (prompt box +
+  model select from the settings + effort/fast/bypass chips + `CommandPreview` from
+  `/api/runs/preview` + Send/Stop) sits under the chat and on `NewConversation.jsx`, which opens
+  the conversation once the run has its session id. `PromptBox.jsx`: a transparent textarea
+  over a mirror that draws the text with the known command `<mark>`ed (same font metrics —
+  no padding or weight on marks), completion listbox from `lib/prompt.js` (pure, tested).
+  `Settings.jsx`: right panel (`is-wide` = fixed overlay) from the account menu; settings in
+  localStorage `ah_settings` via `lib/settings.js` (`launchRequest` maps them onto a run
+  request) and `hooks/useSettings.js` (same-tab event + `storage`); harness info, commands
+  and models via `hooks/useHarnessData.js` (cached per page). `e2e/prompts.spec.js` has its own
+  Playwright project (live → prompts → shells) and project folder, removed afterwards.
 - `components/Shells.jsx` — `ShellProvider` (shell list restored from `/api/shells`, active tab,
   open/minimized; `useShells().openShell({cwd, run})` from the project rows and the Resume
   popover) and `ShellPanel` (tab bar = status bar, drag-to-resize, height in prefs).
   `Terminal.jsx` (lazy: xterm.js + fit addon) keeps one xterm per shell mounted while hidden,
   resets before a reattach's scrollback replay; `lib/shells.js` holds its pure helpers.
 - `components/` — `ProjectsPanel` (collapsible rail; projects whose folder is gone hidden until
-  the header count is clicked; footer = `UserMenu`: user + kebab menu with theme radio items
-  and **Log out**, which asks in a `<dialog>`), `ConversationList` (harness filter: icons only,
-  "All" and the selected harness with name + count), `ConversationView`
+  the header count is clicked; footer = `UserMenu`: user + kebab menu with Settings, theme radio
+  items and **Log out**, which asks in a `<dialog>`), `ConversationList` (harness filter: icons
+  only, "All" and the selected harness with name + count; ✎ = new conversation with the
+  filter's harness), `ConversationView`
   (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
   collapsed by default, global Show/Hide work), `Step` (thinking/note/tool rows; tool input shown
   as shell/diff/JSON, output on click), `ResumeButton`, `Markdown` (markdown-it + hljs + GitHub

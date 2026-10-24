@@ -1,13 +1,15 @@
 # Awesome Harnesses
 
-A read-only viewer for local data from **Claude Code**, **Cursor**, **Codex**, **pi**,
+A viewer for local data from **Claude Code**, **Cursor**, **Codex**, **pi**,
 **OpenCode**, and **Kilo Code**. Awesome Harnesses is a tool for viewing data from these
 coding-agent harnesses, not a harness itself. It reads their transcript files and databases
 without writing to them.
 
-The current experience browses saved sessions and displays their conversation content,
-including prompts, answers, tool calls, and thinking. A dedicated conversation mode is planned.
-This is not a live view: use the reload buttons to pick up new messages.
+It browses saved sessions and displays their conversation content, including prompts,
+answers, tool calls, and thinking. The open conversation and both lists refresh by themselves
+while a session is live. You can also send a message to a conversation or start a new one:
+the server runs the harness's own CLI without its interactive UI (`claude -p`, `codex exec`, …),
+and the conversation shows its work as the CLI writes the transcript.
 
 ## Run
 
@@ -57,6 +59,7 @@ Building:
 | `PI_DIR` | `~/.pi` | |
 | `OPENCODE_DB` | `$XDG_DATA_HOME/opencode/opencode.db` (`~/.local/share/…`) | |
 | `KILO_DB` | `$XDG_DATA_HOME/kilo/kilo.db` (`~/.local/share/…`) | |
+| `LAUNCH_PATH` | your login shell's `PATH` | Where the harness CLIs are looked up for prompts sent from the UI. By default the server asks `$SHELL -l -i` once every few minutes, so CLIs installed with nvm or into `~/.local/bin` are found from the service too. |
 
 A harness that isn't installed simply has no local data to show.
 
@@ -82,18 +85,45 @@ in memory). A browser that restores the last session on start also restores this
   with the number of conversations per harness and the last activity. A project used from
   several harnesses is one entry. Projects whose folder is gone are hidden: click the count
   next to **Projects** to show them (greyed out) or hide them again. The footer shows the
-  username and a ⋮ menu with the theme (system, light, dark) and **Log out**.
+  username and a ⋮ menu with **Settings**, the theme (system, light, dark) and **Log out**.
 - **Conversations**: title, status icon, harness + model, prompt and tool-call counts, last
   update. Filter by text (title, model, branch) and by harness: **All** with its count, then
   one icon per harness the project has; the selected harness also shows its name and count.
+  The ✎ button in the header starts a **new conversation** in the project, with the harness
+  the filter shows (with **All**: the default harness from the settings).
 - **Conversation**: header with harness/model, branch, start time, session id; **Show work**
   expands every answer's work details; **Resume** opens the resume command with a
   *Bypass permissions* option, a copy button and **Run in shell** (opens a terminal tab in the
   conversation's folder and runs the command).
+- **Prompt box** (under the conversation, and on the new-conversation page, where the harness
+  is picked too): the model list comes from the settings (**Default model** = the harness's
+  own), and chips show the effort, fast mode and bypass that apply. Enter sends, Shift+Enter
+  is a new line. Typing `/` at the start (`$` anywhere for Codex skills) lists the harness's
+  slash commands and skills for the folder, with descriptions; ↑/↓ and Enter or Tab insert
+  one, and a known command is highlighted in the text (commands violet, skills orange), with
+  "Uses the skill …" under the box. **Command** shows the exact command line. While the
+  prompt runs, it shows as sent until the transcript has it, the view polls fast, and **Stop**
+  interrupts the CLI (then kills it after 5 s). If the CLI fails, its last error lines show
+  in the chat. A conversation another window is working on, or a Cursor app chat, can't be
+  sent to.
+- **Settings** (⋮ menu → Settings): a panel on the right (⤢ makes it wider, over the
+  conversation; Esc or × closes it), saved in this browser. The default harness for **New**,
+  then per harness: the models the prompt box offers, in order (suggestions from the CLI:
+  Claude's aliases, Codex's model cache, `cursor-agent models`, `pi --list-models`,
+  `opencode`/`kilo models`), each with its thinking effort (the values that model supports
+  where the CLI says so); the effort of the default model; **Fast mode** (Claude Code, Codex;
+  off by default); **Bypass permissions** (a prompt sent from here can't ask for approval);
+  and a **command preview** of what a new conversation would run with those settings.
 - **Live sessions**: an open conversation refreshes by itself (every 2 s while its transcript
   changed in the last 2 minutes, every 15 s otherwise) and new messages appear as the agent
   writes them. While the agent is working, the work is shown and the chat follows the newest
   step; when the turn ends the work collapses and the final answer is left.
+- **Running sessions**: a project or conversation an agent is working on (transcript changed
+  in the last 2 minutes, last turn not finished) shows a pulsing broadcast icon; once the turn
+  ends it turns into a green check until the 2 minutes pass (a dot on the collapsed rail's
+  badges). The open conversation's header carries a Windows 11-style progress bar while the
+  agent works. Both lists reload by themselves: every 4 s while something in them is live,
+  every 15 s otherwise.
 - **Terminal** (bottom of the conversation column): any number of shell tabs. Open one with the
   terminal button on a project row (hover), **+** in the terminal bar (current project's
   folder) or **Run in shell**. Each tab shows its number (counting up from the server's
@@ -117,6 +147,20 @@ Resume commands:
 | pi | `cd <cwd> && pi --session <session id>` | — (pi doesn't ask for permissions) |
 | OpenCode | `cd <dir> && opencode --session <session id>` | `--auto` |
 | Kilo Code | `cd <dir> && kilo --session <session id>` | — (only non-interactive `kilo run` has one) |
+
+Prompts sent from the UI (the server builds the command; the preview shows it):
+
+| Harness | New conversation / continue | Model, effort, fast mode | Commands and skills |
+|---|---|---|---|
+| Claude Code | `claude -p --session-id <new uuid>` / `--resume <id>` | `--model`, `--effort`, `--settings '{"fastMode":true}'` | `/command`, `/skill`, `/plugin:name`: Claude expands them |
+| Cursor | `cursor-agent -p --output-format stream-json --trust` (`--resume <id>`) | `--model` (effort and speed are in Cursor's model names) | `.cursor/commands` templates are expanded by the server; skills become an instruction to use them |
+| Codex | `codex exec --json --skip-git-repo-check` / `codex exec resume … <id>` | `--model`, `-c model_reasoning_effort=…`, `-c service_tier="fast"` | `$skill` mentions (Codex expands them); `/prompts:name` is expanded by the server |
+| pi | `pi -p --session-id <new uuid>` / `--session <id>` | `--model`, `--thinking` | `/template` and `/skill:name`: pi expands them |
+| OpenCode / Kilo | `opencode run --format json` (`--session <id>`) | `--model`, `--variant` | commands are sent as `--command <name>`; skills become an instruction |
+
+Each runs in the conversation's folder (the project's for a new one), with the bypass flag of
+the resume table when it is on (Kilo: `kilo run --auto`). The id of a new Codex, Cursor or OpenCode/Kilo conversation
+comes from the CLI's JSON output.
 
 ## What is read
 
