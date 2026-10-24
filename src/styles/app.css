@@ -1285,13 +1285,23 @@ body {
   transition: transform 0.12s ease;
 }
 
-.ah-work__chev.is-open,
-.ah-step__chev.is-open {
+.ah-work__chev.is-open {
   transform: rotate(90deg);
 }
 
+.ah-step__chev.is-open,
 .ah-event__chev.is-open {
   transform: rotate(180deg);
+}
+
+/* A tool row's expand mark sits at its end, away from the tool's own icon (>_ for shells). */
+.ah-step__chev {
+  margin-left: auto;
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-step__took + .ah-step__chev {
+  margin-left: 0;
 }
 
 .ah-steps {

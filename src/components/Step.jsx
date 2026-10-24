@@ -63,12 +63,12 @@ function ToolStep({ step }) {
   return (
     <div className={`ah-step ah-step--tool${step.isError ? " is-error" : ""}`}>
       <button type="button" className="ah-step__head" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
-        <i className={`fa-solid fa-chevron-right ah-step__chev${open ? " is-open" : ""}`} aria-hidden="true"></i>
         <i className={`fa-solid ${toolIcon(step.tool)} ah-step__icon`} aria-hidden="true"></i>
         <span className="ah-step__tool">{toolLabel(step.tool)}</span>
         <span className="ah-step__summary">{summary}</span>
         {step.isError ? <span className="ah-step__badge">error</span> : null}
         {took ? <span className="ah-step__took">{took}</span> : null}
+        <i className={`fa-solid fa-chevron-down ah-step__chev${open ? " is-open" : ""}`} aria-hidden="true"></i>
       </button>
       {open ? (
         <div className="ah-step__body">
