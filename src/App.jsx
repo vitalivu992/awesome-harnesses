@@ -55,7 +55,7 @@ function Browser({ user, onLogout }) {
 
   useEffect(() => {
     const title = conversation.data?.title || project?.name
-    document.title = title ? `${title} · awesome-harness` : "awesome-harness"
+    document.title = title ? `${title} · Awesome Harnesses` : "Awesome Harnesses"
   }, [conversation.data?.title, project?.name])
 
   const selectProject = useCallback((key) => setParams({ project: key }), [setParams])
@@ -127,7 +127,7 @@ function AuthGate() {
   }, [])
 
   useEffect(() => {
-    if (user === null) document.title = "Log in · awesome-harness"
+    if (user === null) document.title = "Log in · Awesome Harnesses"
   }, [user])
 
   const onLogin = useCallback((u) => {

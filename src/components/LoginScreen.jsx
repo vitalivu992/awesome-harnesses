@@ -89,7 +89,7 @@ export function LoginScreen({ unlockedAs = null, onLogin, onDone }) {
       <form className="ah-login__card" onSubmit={submit} aria-hidden={unlocking || undefined}>
         <div className="ah-login__mark">
           <i className="fa-solid fa-layer-group" aria-hidden="true"></i>
-          <span>awesome-harness</span>
+          <span>Awesome Harnesses</span>
         </div>
         <h1 className="ah-login__title">Log in</h1>
         <p className="ah-login__hint">Your agent conversations hold code and secrets. Use the username and password of your computer account, as for your desktop session.</p>

@@ -1,13 +1,13 @@
-# awesome-harness
+# Awesome Harnesses
 
-Browse your local coding-agent conversations — **Claude Code**, **Cursor**, **Codex**, **pi**,
-**OpenCode** and **Kilo Code** — in one UI, as a chat:
-your prompts on the right, the agent's answer on the left (rendered markdown), the tool calls
-and thinking behind each answer collapsed under **Work details**. Copy a command to resume any
-conversation in its CLI.
+A read-only viewer for local data from **Claude Code**, **Cursor**, **Codex**, **pi**,
+**OpenCode**, and **Kilo Code**. Awesome Harnesses is a tool for viewing data from these
+coding-agent harnesses, not a harness itself. It reads their transcript files and databases
+without writing to them.
 
-It reads the harnesses' own transcript files and databases and never writes to them. It is a browser for
-existing conversations, not a live view: use the reload buttons to pick up new messages.
+The current experience browses saved sessions and displays their conversation content,
+including prompts, answers, tool calls, and thinking. A dedicated conversation mode is planned.
+This is not a live view: use the reload buttons to pick up new messages.
 
 ## Run
 
@@ -49,7 +49,7 @@ Building:
 | `OPENCODE_DB` | `$XDG_DATA_HOME/opencode/opencode.db` (`~/.local/share/…`) | |
 | `KILO_DB` | `$XDG_DATA_HOME/kilo/kilo.db` (`~/.local/share/…`) | |
 
-A harness that isn't installed simply has no conversations.
+A harness that isn't installed simply has no local data to show.
 
 ## Login
 

@@ -35,7 +35,7 @@ uninstall: ## Stop and disable the user systemd unit
 up: ## Start the service in the background (runs install first if the unit isn't installed)
 	@test -e "$(UNIT_DST)" || $(MAKE) install
 	systemctl --user start $(UNIT)
-	@echo "awesome-harness is up: http://$(HOST):$(PORT)"
+	@echo "Awesome Harnesses is up: http://$(HOST):$(PORT)"
 
 down: ## Stop the service (it stays installed; `make up` starts it again)
 	systemctl --user stop $(UNIT)

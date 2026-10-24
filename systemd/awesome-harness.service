@@ -1,5 +1,5 @@
 [Unit]
-Description=awesome-harness (browse Claude Code and Cursor conversations)
+Description=Awesome Harnesses (read-only viewer for coding-agent data)
 Documentation=file://%h/Projects/linhvu_fortna/awesome-harness/README.md
 
 [Service]

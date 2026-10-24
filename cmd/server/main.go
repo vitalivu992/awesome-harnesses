@@ -1,4 +1,4 @@
-// Command server serves the awesome-harness UI and its read-only API over
+// Command server serves the Awesome Harnesses UI and its read-only API over
 // the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo).
 package main
 
