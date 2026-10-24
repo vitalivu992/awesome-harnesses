@@ -90,13 +90,6 @@ function ShellTab({ shell, active, onSelect, onClose }) {
       >
         <span className="ah-shell-tab__n">{shell.n}</span>
         <span className="ah-shell-tab__folder">{folderName(shell.cwd)}</span>
-        {shell.exited ? (
-          <span className="ah-shell-tab__cmd">exited</span>
-        ) : shell.command ? (
-          <span className="ah-shell-tab__cmd">
-            <i className="fa-solid fa-play" aria-hidden="true"></i> {shell.command}
-          </span>
-        ) : null}
       </button>
       <button
         type="button"
@@ -115,9 +108,9 @@ const MIN_HEIGHT = 120
 
 /**
  * The terminal panel at the bottom of the main column. Its tab bar is the
- * status bar: minimized, only the bar shows (tab number, folder, running
- * command); open, the selected tab's terminal shows under it and the top edge
- * drags to resize. `defaultCwd` is where "+" opens a shell.
+ * status bar: minimized, only the bar shows (tab number and folder; the
+ * running command is in the tooltip); open, the selected tab's terminal
+ * shows under it and the top edge drags to resize. `defaultCwd` is where "+" opens a shell.
  */
 export function ShellPanel({ defaultCwd }) {
   const { shells, activeId, open, error, setOpen, setError, select, openShell, closeShell, updateShell, refresh } = useShells()

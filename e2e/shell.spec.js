@@ -19,7 +19,8 @@ test("opens shells from the project list, streams commands, minimizes and closes
 
   const tabs = page.locator(".ah-shell-tab")
   await expect(tabs).toHaveCount(1)
-  await expect(tabs.first()).toContainText("1")
+  // Tab numbers count up from the server's start: read this one's.
+  const first = Number(await tabs.first().locator(".ah-shell-tab__n").textContent())
   await expect(tabs.first()).toContainText("demo_app")
   const screen = page.locator(".ah-terminal:not([hidden]) .xterm-rows")
   await expect(screen).toBeVisible()
@@ -31,18 +32,20 @@ test("opens shells from the project list, streams commands, minimizes and closes
   await expect(screen).toContainText("e2e-42")
   await expect(screen).toContainText(PROJECT)
 
-  // The tab shows the running command, then the prompt again.
+  // The tab's tooltip shows the running command, then just the folder again.
   await page.keyboard.type("sleep 30")
   await page.keyboard.press("Enter")
   // macOS gives only the program name (proc_darwin.go), Linux the whole command line.
-  await expect(tabs.first()).toContainText(process.platform === "darwin" ? "sleep" : "sleep 30")
-  await page.keyboard.press("Control+C")
+  await expect(tabs.first()).toHaveAttribute("title", process.platform === "darwin" ? /· sleep/ : /· sleep 30$/)
   await expect(tabs.first()).not.toContainText("sleep")
+  await page.keyboard.press("Control+C")
+  await expect(tabs.first()).not.toHaveAttribute("title", /sleep/)
 
   // A second tab from "+", then switch back.
   await page.locator("#ahShellNew").click()
   await expect(tabs).toHaveCount(2)
   await expect(tabs.nth(1)).toHaveClass(/is-active/)
+  await expect(tabs.nth(1).locator(".ah-shell-tab__n")).toHaveText(String(first + 1))
   await tabs.first().getByRole("tab").click()
   await expect(tabs.first()).toHaveClass(/is-active/)
   await expect(screen).toContainText("e2e-42")
@@ -57,11 +60,17 @@ test("opens shells from the project list, streams commands, minimizes and closes
   // A reload keeps the shells; close ends them.
   await page.reload()
   await expect(tabs).toHaveCount(2)
-  await tabs.first().getByRole("button", { name: "Close shell 1" }).click()
+  await tabs.first().getByRole("button", { name: `Close shell ${first}` }).click()
   await expect(tabs).toHaveCount(1)
-  await tabs.first().getByRole("button", { name: "Close shell 2" }).click()
+  await tabs.first().getByRole("button", { name: `Close shell ${first + 1}` }).click()
   await expect(tabs).toHaveCount(0)
   expect((await (await page.request.get("/api/shells")).json()).shells).toHaveLength(0)
+
+  // Numbers aren't reused: the next shell gets a new one.
+  await page.locator("#ahShellNew").click()
+  await expect(tabs.first().locator(".ah-shell-tab__n")).toHaveText(String(first + 2))
+  await tabs.first().getByRole("button", { name: /^Close shell/ }).click()
+  await expect(tabs).toHaveCount(0)
 })
 
 test("runs the resume command in a new shell", async ({ page }) => {
@@ -74,6 +83,6 @@ test("runs the resume command in a new shell", async ({ page }) => {
     `cd ${PROJECT} && claude --resume 11111111-aaaa-4bbb-8ccc-000000000001`
   )
   await expect(page.locator(".ah-shell-tab")).toHaveCount(1)
-  await page.getByRole("button", { name: "Close shell 1" }).click()
+  await page.getByRole("button", { name: /^Close shell/ }).click()
   await expect(page.locator(".ah-shell-tab")).toHaveCount(0)
 })

@@ -1697,29 +1697,36 @@ body.is-resizing-shell {
 
 .ah-shells__tabs {
   display: flex;
-  gap: 2px;
+  align-self: stretch;
+  gap: 4px;
   min-width: 0;
   overflow-x: auto;
   scrollbar-width: thin;
 }
 
+/* Tabs as GitHub's underline nav: the selected one is bold with a coral bar on the bar's edge. */
 .ah-shell-tab {
+  position: relative;
   display: flex;
   align-items: center;
   flex-shrink: 0;
-  max-width: 300px;
-  border-radius: 6px;
+  max-width: 240px;
   color: var(--fgColor-muted, #59636e);
 }
 
-.ah-shell-tab:hover {
-  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+.ah-shell-tab.is-active {
+  color: var(--fgColor-default, #1f2328);
 }
 
-.ah-shell-tab.is-active {
-  background: var(--ah-active-bg);
-  color: var(--fgColor-default, #1f2328);
-  box-shadow: inset 0 -2px 0 var(--ah-active-bar);
+.ah-shell-tab.is-active::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 6px;
+  background: var(--underlineNav-borderColor-active, #fd8c73);
 }
 
 .ah-shell-tab__main {
@@ -1728,66 +1735,67 @@ body.is-resizing-shell {
   gap: 6px;
   min-width: 0;
   border: 0;
+  border-radius: 6px;
   background: none;
-  padding: 4px 4px 4px 6px;
+  padding: 3px 26px 3px 8px;
   color: inherit;
   font: inherit;
   cursor: pointer;
 }
 
-.ah-shell-tab__n {
-  display: inline-grid;
-  place-items: center;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  border-radius: 4px;
-  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.3));
-  font-size: 11px;
+.ah-shell-tab__main:hover {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+}
+
+.ah-shell-tab.is-active .ah-shell-tab__main {
   font-weight: 600;
+}
+
+/* The tab number as a Primer counter. */
+.ah-shell-tab__n {
+  display: inline-block;
+  min-width: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--counter-borderColor, transparent);
+  border-radius: 999px;
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+  color: var(--fgColor-default, #1f2328);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 18px;
+  text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
-.ah-shell-tab.is-active .ah-shell-tab__n {
-  background: var(--ah-active-bar);
-  color: #fff;
-}
-
 .ah-shell-tab__folder {
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.ah-shell-tab__cmd {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-family: var(--fontStack-monospace, ui-monospace, monospace);
-  font-size: 11px;
-  color: var(--fgColor-success, #1a7f37);
 }
 
-.ah-shell-tab__cmd i {
-  font-size: 8px;
-  vertical-align: 1px;
-}
-
-.ah-shell-tab.is-exited .ah-shell-tab__folder,
-.ah-shell-tab.is-exited .ah-shell-tab__cmd {
+.ah-shell-tab.is-exited .ah-shell-tab__folder {
   color: var(--fgColor-muted, #59636e);
   text-decoration: line-through;
 }
 
 .ah-shell-tab__close {
+  position: absolute;
+  right: 3px;
   border: 0;
   background: none;
-  padding: 3px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
   color: var(--fgColor-muted, #59636e);
   font-size: 11px;
   cursor: pointer;
-  opacity: 0.6;
+  opacity: 0;
+}
+
+.ah-shell-tab:hover .ah-shell-tab__close,
+.ah-shell-tab.is-active .ah-shell-tab__close,
+.ah-shell-tab__close:focus-visible {
+  opacity: 0.7;
 }
 
 .ah-shell-tab__close:hover {
