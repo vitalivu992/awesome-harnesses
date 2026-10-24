@@ -108,7 +108,9 @@ body {
   justify-content: space-between;
   gap: 8px;
   padding: 12px 12px 8px;
-  min-height: 52px;
+  /* The same height in both panels, so their filter rows line up. */
+  height: 60px;
+  box-sizing: border-box;
 }
 
 .ah-panel-head__actions {
@@ -390,13 +392,13 @@ body {
 }
 
 .ah-btn--primary {
-  background: var(--bgColor-success-emphasis, #1f883d);
+  background: var(--button-primary-bgColor-rest, #1f883d);
   border-color: transparent;
-  color: #fff;
+  color: var(--button-primary-fgColor-rest, #fff);
 }
 
 .ah-btn--primary:hover {
-  background: #1a7f37;
+  background: var(--button-primary-bgColor-hover, #1c8139);
 }
 
 .ah-btn--danger {
@@ -404,9 +406,9 @@ body {
 }
 
 .ah-btn--danger:hover {
-  background: var(--bgColor-danger-emphasis, #cf222e);
+  background: var(--button-danger-bgColor-hover, #a40e26);
   border-color: transparent;
-  color: #fff;
+  color: var(--button-danger-fgColor-hover, #fff);
 }
 
 .ah-btn__caret {
@@ -1350,10 +1352,9 @@ body {
   z-index: 20;
   width: min(560px, 80vw);
   padding: 12px;
-  border: 1px solid var(--borderColor-default, #d0d7de);
-  border-radius: var(--ah-radius);
+  border-radius: 12px;
   background: var(--overlay-bgColor, var(--bgColor-default, #fff));
-  box-shadow: var(--shadow-floating-large, 0 8px 24px rgba(140, 149, 159, 0.3));
+  box-shadow: var(--shadow-floating-small, 0 0 0 1px #d1d9e080, 0 6px 18px #25292e1f);
 }
 
 .ah-popover__title {
