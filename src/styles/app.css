@@ -428,6 +428,25 @@ body {
   gap: 4px;
 }
 
+.ah-project-row {
+  position: relative;
+}
+
+/* "Open a shell here": shown on hover / keyboard focus, over the counts row. */
+.ah-project__shell {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  opacity: 0;
+}
+
+.ah-project-row:hover .ah-project__shell,
+.ah-project__shell:focus-visible {
+  opacity: 1;
+}
+
 /* collapsed rail */
 
 .ah-projects--collapsed {
@@ -654,7 +673,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  height: 100%;
+  flex: 1;
 }
 
 .ah-view--empty {
@@ -1182,6 +1201,7 @@ body {
 .ah-popover__actions {
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
   margin-top: 10px;
 }
 
@@ -1601,4 +1621,207 @@ body {
   to {
     opacity: 0;
   }
+}
+
+/* ---------- terminal panel (components/Shells.jsx) ---------- */
+
+.ah-shells {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--borderColor-default, #d0d7de);
+  background: var(--bgColor-default, #fff);
+}
+
+.ah-shells__resize {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -4px;
+  height: 7px;
+  cursor: ns-resize;
+  z-index: 5;
+}
+
+.ah-shells__resize:hover,
+.is-resizing-shell .ah-shells__resize {
+  background: var(--ah-active-bar);
+  opacity: 0.5;
+}
+
+body.is-resizing-shell {
+  cursor: ns-resize;
+  user-select: none;
+}
+
+.ah-shells__bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 6px;
+  font-size: 12px;
+  background: var(--bgColor-inset, #f6f8fa);
+}
+
+.ah-shells.is-open .ah-shells__bar {
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+}
+
+.ah-shells__bar .ah-icon-btn {
+  padding: 4px 7px;
+  font-size: 12px;
+}
+
+.ah-shells__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  border: 0;
+  background: none;
+  padding: 4px 6px;
+  color: var(--fgColor-muted, #59636e);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ah-shells__label:hover {
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ah-shells__tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.ah-shell-tab {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  max-width: 300px;
+  border-radius: 6px;
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-shell-tab:hover {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+}
+
+.ah-shell-tab.is-active {
+  background: var(--ah-active-bg);
+  color: var(--fgColor-default, #1f2328);
+  box-shadow: inset 0 -2px 0 var(--ah-active-bar);
+}
+
+.ah-shell-tab__main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  border: 0;
+  background: none;
+  padding: 4px 4px 4px 6px;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ah-shell-tab__n {
+  display: inline-grid;
+  place-items: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.3));
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.ah-shell-tab.is-active .ah-shell-tab__n {
+  background: var(--ah-active-bar);
+  color: #fff;
+}
+
+.ah-shell-tab__folder {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ah-shell-tab__cmd {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--fontStack-monospace, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--fgColor-success, #1a7f37);
+}
+
+.ah-shell-tab__cmd i {
+  font-size: 8px;
+  vertical-align: 1px;
+}
+
+.ah-shell-tab.is-exited .ah-shell-tab__folder,
+.ah-shell-tab.is-exited .ah-shell-tab__cmd {
+  color: var(--fgColor-muted, #59636e);
+  text-decoration: line-through;
+}
+
+.ah-shell-tab__close {
+  border: 0;
+  background: none;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.ah-shell-tab__close:hover {
+  opacity: 1;
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.3));
+  color: var(--fgColor-danger, #d1242f);
+}
+
+.ah-shells__error {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--fgColor-danger, #d1242f);
+}
+
+.ah-shells__toggle {
+  margin-left: auto;
+}
+
+.ah-shells__body {
+  min-height: 120px;
+  padding: 6px 0 0 10px;
+  background: #ffffff;
+}
+
+[data-color-mode="dark"] .ah-shells__body {
+  background: #0d1117;
+}
+
+.ah-terminal {
+  height: 100%;
+}
+
+.ah-terminal[hidden] {
+  display: none;
 }

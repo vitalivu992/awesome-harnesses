@@ -62,3 +62,18 @@ export async function fetchConversations(projectKey, opts) {
 export async function fetchConversation(harness, id, opts) {
   return getJSON(`/api/conversations/${encodeURIComponent(harness)}/${encodeURIComponent(id)}`, opts)
 }
+
+// The terminal panel's shells (internal/shell); each terminal streams over a WebSocket.
+
+export async function fetchShells(opts) {
+  return (await getJSON("/api/shells", opts)).shells || []
+}
+
+/** Starts a login shell in `cwd` (the server's home when empty); `run` is typed at its first prompt. */
+export async function createShell({ cwd = "", run = "" } = {}) {
+  return getJSON("/api/shells", { method: "POST", body: { cwd, run } })
+}
+
+export async function killShell(id) {
+  await getJSON(`/api/shells/${encodeURIComponent(id)}`, { method: "DELETE" })
+}

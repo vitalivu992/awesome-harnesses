@@ -40,7 +40,7 @@ Building:
 | `HOST` | `127.0.0.1` | Transcripts hold code, prompts and secrets: keep it on loopback. |
 | `PORT` | `8767` | |
 | `PAM_SERVICE` | `login` | Linux, macOS: PAM service that checks the password (`/etc/pam.d/<name>`). |
-| `AUTH_DISABLED` | off | `1` turns the login off (local testing, agents driving a browser). |
+| `AUTH_DISABLED` | off | `1` turns the login off (local testing, agents driving a browser). Anyone who reaches the port then also gets a shell. |
 | `CLAUDE_DIR` | `~/.claude` | |
 | `CURSOR_DIR` | `~/.cursor` | |
 | `CURSOR_LOGS_DIR` | `~/.cursor-server/data/logs` | Cursor server logs: model and turn times of Cursor app chats. |
@@ -77,7 +77,17 @@ in memory). A browser that restores the last session on start also restores this
   project has).
 - **Conversation**: header with harness/model, branch, start time, session id; **Show work**
   expands every answer's work details; **Resume** opens the resume command with a
-  *Bypass permissions* option and a copy button.
+  *Bypass permissions* option, a copy button and **Run in shell** (opens a terminal tab in the
+  conversation's folder and runs the command).
+- **Terminal** (bottom of the conversation column): any number of shell tabs. Open one with the
+  terminal button on a project row (hover), **+** in the terminal bar (current project's
+  folder) or **Run in shell**. Each tab shows its number, the current folder and the running
+  command; click a tab to switch, **×** to end the shell, the chevron (or the active tab) to
+  minimize the panel to its status bar. Drag the top edge to resize. Shells are login shells
+  (`$SHELL -l`; PowerShell on Windows) that keep running when the page reloads (the last
+  512 KB of output is replayed) and end on **Log out**. Ctrl+Shift+C copies the selection.
+  The folder and command are read from `/proc` on Linux and libproc on macOS; Windows tabs
+  show the starting folder only.
 
 Status icons: ✓ completed, ✗ ended with an error, ■ interrupted by the user, ◐ unfinished
 (the transcript stops mid-turn), pulsing dot = file changed in the last 2 minutes.

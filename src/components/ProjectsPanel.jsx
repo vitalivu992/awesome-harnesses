@@ -52,6 +52,7 @@ export function ProjectsPanel({
   onRefresh,
   user,
   onLogout,
+  onOpenShell,
 }) {
   const [text, setText] = useState("")
   const shown = useMemo(() => filterProjects(projects || [], text), [projects, text])
@@ -115,7 +116,7 @@ export function ProjectsPanel({
       {error ? <p className="ah-error">Could not load projects: {error.message}</p> : null}
       <ul className="ah-list" id="ahProjects">
         {shown.map((p) => (
-          <li key={p.key}>
+          <li key={p.key} className="ah-project-row">
             <button
               type="button"
               className={`ah-project${p.key === selectedKey ? " is-active" : ""}${p.exists ? "" : " is-missing"}`}
@@ -141,6 +142,17 @@ export function ProjectsPanel({
                 ))}
               </span>
             </button>
+            {p.exists && p.path ? (
+              <button
+                type="button"
+                className="ah-icon-btn ah-project__shell"
+                onClick={() => onOpenShell(p)}
+                title={`Open a shell in ${p.path}`}
+                aria-label={`Open a shell in ${p.name}`}
+              >
+                <i className="fa-solid fa-terminal" aria-hidden="true"></i>
+              </button>
+            ) : null}
           </li>
         ))}
         {projects && !shown.length ? <li className="ah-empty">No projects match.</li> : null}

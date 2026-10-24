@@ -12,7 +12,16 @@ export default defineConfig({
   testMatch: /.*\.spec\.js/,
   fullyParallel: true,
   use: { baseURL, trace: "retain-on-failure" },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } }],
+  projects: [
+    { name: "chromium", testIgnore: /shell\.spec\.js/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // Logging out (auth.spec) ends every shell: the shell specs run after the others.
+    {
+      name: "shells",
+      testMatch: /shell\.spec\.js/,
+      dependencies: ["chromium"],
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+  ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
     : {

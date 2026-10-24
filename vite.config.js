@@ -15,7 +15,8 @@ export default defineConfig({
   // `pnpm dev` serves the app with HMR and proxies the Go API (`make dev`).
   server: {
     proxy: {
-      "/api": apiTarget,
+      // ws: the terminal panel's shells stream over WebSockets.
+      "/api": { target: apiTarget, ws: true },
       "/health": apiTarget,
     },
   },

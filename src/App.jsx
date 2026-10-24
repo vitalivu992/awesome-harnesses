@@ -14,6 +14,7 @@ import { ProjectsPanel } from "./components/ProjectsPanel.jsx"
 import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
 import { LoginScreen } from "./components/LoginScreen.jsx"
+import { ShellPanel, ShellProvider, useShells } from "./components/Shells.jsx"
 
 /** "claude:<id>" → ["claude", "<id>"]. */
 export function splitConversationKey(key) {
@@ -28,6 +29,7 @@ export function splitConversationKey(key) {
  * linked to and the back button works.
  */
 function Browser({ user, onLogout }) {
+  const { openShell, setError: setShellError } = useShells()
   const [params, setParams] = useSearchParams()
   const projectKey = params.get("project") || ""
   const convKey = params.get("c") || ""
@@ -80,6 +82,7 @@ function Browser({ user, onLogout }) {
         onRefresh={() => setProjectsReload((n) => n + 1)}
         user={user}
         onLogout={onLogout}
+        onOpenShell={(p) => openShell({ cwd: p.path }).catch(setShellError)}
       />
       <ConversationList
         key={projectKey}
@@ -97,6 +100,7 @@ function Browser({ user, onLogout }) {
           loading={conversation.loading}
           error={conversation.error}
         />
+        <ShellPanel defaultCwd={project?.exists ? project.path : ""} />
       </main>
     </div>
   )
@@ -147,7 +151,11 @@ function AuthGate() {
   if (user === undefined) return null
   return (
     <>
-      {user ? <Browser user={user} onLogout={onLogout} /> : null}
+      {user ? (
+        <ShellProvider>
+          <Browser user={user} onLogout={onLogout} />
+        </ShellProvider>
+      ) : null}
       {!user || unlocking ? <LoginScreen unlockedAs={user} onLogin={onLogin} onDone={onUnlocked} /> : null}
     </>
   )

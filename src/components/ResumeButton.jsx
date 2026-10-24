@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { bypassFlag, noBypassReason, resumeCommand } from "../lib/resume.js"
 import { HARNESSES, harnessName } from "../lib/format.js"
 import { readPrefs, writePref } from "../lib/prefs.js"
+import { useShells } from "./Shells.jsx"
 
 async function copyText(text) {
   try {
@@ -24,12 +25,15 @@ async function copyText(text) {
 
 /**
  * "Resume" popover: the CLI command that continues the conversation, a
- * bypass-permissions option (remembered), and a copy button.
+ * bypass-permissions option (remembered), a copy button and a button that
+ * runs it in a new shell of the terminal panel.
  */
 export function ResumeButton({ conversation }) {
   const [open, setOpen] = useState(false)
   const [bypass, setBypass] = useState(() => Boolean(readPrefs().bypass))
   const [copied, setCopied] = useState(false)
+  const [shellError, setShellError] = useState("")
+  const shells = useShells()
   const ref = useRef(null)
   const flag = bypassFlag(conversation.harness)
   const command = resumeCommand(conversation, { bypass })
@@ -48,7 +52,10 @@ export function ResumeButton({ conversation }) {
     }
   }, [open])
 
-  useEffect(() => setCopied(false), [command])
+  useEffect(() => {
+    setCopied(false)
+    setShellError("")
+  }, [command])
 
   const toggleBypass = (value) => {
     setBypass(value)
@@ -59,6 +66,16 @@ export function ResumeButton({ conversation }) {
     if (await copyText(command)) {
       setCopied(true)
       setTimeout(() => setCopied(false), 1600)
+    }
+  }
+
+  const runInShell = async () => {
+    setShellError("")
+    try {
+      await shells.openShell({ cwd: conversation.cwd || conversation.projectPath || "", run: command })
+      setOpen(false)
+    } catch (err) {
+      setShellError(err.message)
     }
   }
 
@@ -107,7 +124,17 @@ export function ResumeButton({ conversation }) {
               {harnessName(conversation.harness)} app, not the CLI; the CLI may not find it. Open it in the app instead.
             </p>
           ) : null}
+          {shellError ? (
+            <p className="ah-popover__warn" role="alert">
+              <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> Could not open a shell: {shellError}
+            </p>
+          ) : null}
           <div className="ah-popover__actions">
+            {shells ? (
+              <button type="button" className="ah-btn" id="ahResumeShell" onClick={runInShell} title="Open a shell in the conversation's folder and run the command">
+                <i className="fa-solid fa-terminal" aria-hidden="true"></i> Run in shell
+              </button>
+            ) : null}
             <button type="button" className="ah-btn ah-btn--primary" id="ahResumeCopy" onClick={copy}>
               <i className={`fa-solid ${copied ? "fa-check" : "fa-copy"}`} aria-hidden="true"></i> {copied ? "Copied" : "Copy command"}
             </button>

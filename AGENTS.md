@@ -22,7 +22,7 @@ on this machine. `web/dist/.gitkeep` keeps the embed pattern valid on a fresh cl
 
 ## Architecture
 
-Read-only Go server + React SPA, one binary. No database of its own: transcripts (and the
+Read-only Go server + React SPA, one binary, plus the terminal panel's shells (`internal/shell`). No database of its own: transcripts (and the
 OpenCode/Kilo databases) are read on request and summaries cached in memory by file size + mtime
 (session update time for database rows). Harness ids (`conv.Claude` … `conv.Kilo`) are the same
 strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
@@ -91,6 +91,20 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   2 s delay on failure). `system_e2e.go` (build tag `e2e`) replaces both with
   demo / demo-password for Playwright. `AUTH_DISABLED=1` (`Handler.NoLogin`) turns the login off:
   every request is the server's user — for agents driving a browser against the running service.
+- `internal/shell` — the terminal panel: login shells in PTYs (`aymanbagabas/go-pty`: creack/pty
+  on Unix, ConPTY on Windows), kept in a server-wide `Manager` (tab number = lowest free).
+  `GET/POST /api/shells`, `DELETE /api/shells/{id}`, WebSocket `GET /api/shells/{id}/attach`
+  (`coder/websocket`; its Origin check stops other sites/ports): binary = terminal bytes, text =
+  JSON (`resize` in; `status`/`exit` with the shell's info out). 512 KB scrollback replayed on
+  attach; a slow WebSocket is dropped and the browser reattaches. `run` is typed at the first
+  prompt (first output + 250 ms quiet). Every second the foreground process group (TIOCGPGRP
+  via `Control`, never `Fd()`, which makes the master blocking) gives the tab's folder and
+  command: `/proc` on Linux, libproc + sysctl on macOS (cgo), nothing on Windows. The server
+  drops its slave fd after start; exit = `Wait` + 300 ms drain, then close. Stop = SIGHUP to
+  the group, close, SIGKILL after 3 s. Logout (`auth.Handler.OnLogout`) ends all shells, so
+  the e2e shell spec runs in its own project after the others. `cmd/server` strips its own
+  settings (`serverVars`) from the shells' environment, skips gzip for upgrades, and
+  `statusWriter.Unwrap` lets the upgrade hijack.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
   `GET /api/conversations/{harness}/{id}`. `cmd/server` adds gzip for `/api/*` and an access log,
   and listens on `HOST` (default `127.0.0.1`).
@@ -105,6 +119,11 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   key skips; reduced motion = fade) — `UNLOCK_MS` matches the CSS timings.
 - `App.jsx` (browser) — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
   `useFetch` aborts stale loads.
+- `components/Shells.jsx` — `ShellProvider` (shell list restored from `/api/shells`, active tab,
+  open/minimized; `useShells().openShell({cwd, run})` from the project rows and the Resume
+  popover) and `ShellPanel` (tab bar = status bar, drag-to-resize, height in prefs).
+  `Terminal.jsx` (lazy: xterm.js + fit addon) keeps one xterm per shell mounted while hidden,
+  resets before a reattach's scrollback replay; `lib/shells.js` holds its pure helpers.
 - `components/` — `ProjectsPanel` (collapsible rail; user + **Log out** in the footer), `ConversationList`, `ConversationView`
   (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
   collapsed by default, global Show/Hide work), `Step` (thinking/note/tool rows; tool input shown

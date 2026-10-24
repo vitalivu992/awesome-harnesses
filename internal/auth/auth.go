@@ -39,6 +39,8 @@ type Handler struct {
 	// NoLogin, when set, turns the login off: every request counts as this
 	// user's session (AUTH_DISABLED, for local testing and agents).
 	NoLogin string
+	// OnLogout, when set, runs after a logout (it ends the shells).
+	OnLogout func()
 
 	mu       sync.Mutex
 	sessions map[[32]byte]string // user by sha256 of the cookie value
@@ -155,6 +157,9 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 	})
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusNoContent)
+	if h.OnLogout != nil {
+		go h.OnLogout()
+	}
 }
 
 // user returns the logged-in user of r's session cookie.

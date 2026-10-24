@@ -1,5 +1,6 @@
 // Command server serves the Awesome Harnesses UI and its read-only API over
-// the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo).
+// the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo),
+// and the terminal panel's shells.
 package main
 
 import (
@@ -9,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/user"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -16,8 +18,14 @@ import (
 	"awesome-harness/internal/api"
 	"awesome-harness/internal/auth"
 	"awesome-harness/internal/catalog"
+	"awesome-harness/internal/shell"
 	"awesome-harness/web"
 )
+
+// serverVars are the settings this server reads (often from .env via the
+// systemd unit); the shells it starts don't inherit them.
+var serverVars = []string{"HOST", "PORT", "PAM_SERVICE", "AUTH_DISABLED", "CLAUDE_DIR", "CURSOR_DIR",
+	"CURSOR_LOGS_DIR", "CODEX_DIR", "PI_DIR", "OPENCODE_DB", "KILO_DB"}
 
 func env(name, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(name)); v != "" {
@@ -51,12 +59,17 @@ func main() {
 			log.Fatal(err)
 		}
 		login.NoLogin = u.Username
-		log.Printf("warning: AUTH_DISABLED is set — no login, anyone who reaches the port reads the transcripts as %s", u.Username)
+		log.Printf("warning: AUTH_DISABLED is set — no login, anyone who reaches the port reads the transcripts and gets a shell as %s", u.Username)
 	}
+
+	// Shells run as the server's user; logging out ends them.
+	shells := &shell.Manager{Env: shellEnv()}
+	login.OnLogout = shells.StopAll
 
 	mux := http.NewServeMux()
 	login.Register(mux)
 	(&api.Handler{Catalog: catalog.New(cfg)}).Register(mux)
+	shells.Register(mux)
 	// The single-page app: bundle files, else index.html for client routes.
 	// It 404s /health and /api/* paths no pattern above matched.
 	mux.Handle("/", web.Handler(web.Dist))
@@ -78,10 +91,22 @@ func main() {
 	log.Fatal(srv.ListenAndServe())
 }
 
-// gzipJSON compresses API responses (a long conversation is megabytes of JSON).
+func shellEnv() []string {
+	var out []string
+	for _, kv := range os.Environ() {
+		name, _, _ := strings.Cut(kv, "=")
+		if !slices.Contains(serverVars, name) {
+			out = append(out, kv)
+		}
+	}
+	return out
+}
+
+// gzipJSON compresses API responses (a long conversation is megabytes of JSON),
+// not WebSocket upgrades.
 func gzipJSON(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !strings.HasPrefix(r.URL.Path, "/api/") || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		if !strings.HasPrefix(r.URL.Path, "/api/") || !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || r.Header.Get("Upgrade") != "" {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -104,6 +129,9 @@ type statusWriter struct {
 	http.ResponseWriter
 	status int
 }
+
+// Unwrap lets the WebSocket upgrade reach the connection (http.Hijacker).
+func (s *statusWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }
 
 func (s *statusWriter) WriteHeader(code int) {
 	s.status = code
