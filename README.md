@@ -84,8 +84,8 @@ in memory). A browser that restores the last session on start also restores this
 - **Projects** (left, collapsible to a rail of initials): every directory an agent ran in,
   with the number of conversations per harness and the last activity. A project used from
   several harnesses is one entry. Projects whose folder is gone are hidden: click the count
-  next to **Projects** to show them (greyed out) or hide them again. The footer shows the
-  username and a ⋮ menu with **Settings**, the theme (system, light, dark) and **Log out**.
+  next to **Projects** to show them (greyed out) or hide them again. The footer greets you
+  by the time of day ("Good morning, <user>") and has a ⋮ menu with **Settings**, the theme (system, light, dark) and **Log out**.
 - **Conversations**: title, status icon, harness + model, prompt and tool-call counts, last
   update. Filter by text (title, model, branch) and by harness: **All** with its count, then
   one icon per harness the project has; the selected harness also shows its name and count.
@@ -116,13 +116,14 @@ in memory). A browser that restores the last session on start also restores this
   and a **command preview** of what a new conversation would run with those settings.
 - **Live sessions**: an open conversation refreshes by itself (every 2 s while its transcript
   changed in the last 2 minutes, every 15 s otherwise) and new messages appear as the agent
-  writes them. While the agent is working, the work is shown and the chat follows the newest
-  step; when the turn ends the work collapses and the final answer is left.
+  writes them. While the agent is working, the work is shown, a rotating word ("Pondering…",
+  "Brewing…") sits under its latest text and the chat follows the newest step; when the turn
+  ends the work collapses and the final answer is left.
 - **Running sessions**: a project or conversation an agent is working on (transcript changed
-  in the last 2 minutes, last turn not finished) shows a pulsing broadcast icon; once the turn
+  in the last 2 minutes, last turn not finished) shows a flashing blue dot; once the turn
   ends it turns into a green check until the 2 minutes pass (a dot on the collapsed rail's
   badges). The open conversation's header carries a Windows 11-style progress bar while the
-  agent works. Both lists reload by themselves: every 4 s while something in them is live,
+  agent works (its **Live** chip shows once the turn has ended). Both lists reload by themselves: every 4 s while something in them is live,
   every 15 s otherwise.
 - **Terminal** (bottom of the conversation column): any number of shell tabs. Open one with the
   terminal button on a project row (hover), **+** in the terminal bar (current project's

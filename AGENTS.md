@@ -157,14 +157,16 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   (`?project=<key>&c=<harness>:<id>`, `&new=<harness>` for the new-conversation page).
   `useFetch` aborts stale loads; its `poll(data)` option reloads quietly (no spinner, errors
   keep the data, paused while hidden): both lists use `listPollDelay` (4 s while something is
-  running/active, else 15 s). `components/Running.jsx`: `RunningBar` (Windows 11 indeterminate
-  bar on the view header's bottom edge; static under reduced motion) and `LiveIcon` on project /
-  conversation rows (`lib/live.js` `liveState`: pulsing broadcast = working, green check = active
-  but the last turn ended; projects from `running` / `finished`; a dot on rail badges).
+  running/active, else 15 s). `components/Running.jsx`: `RunningBar` (WinUI indeterminate
+  ProgressBar timing and accent on the view header's bottom border; static under reduced motion;
+  replaces the title's status icon and the Live chip while working), `LiveIcon` on project /
+  conversation rows (`lib/live.js` `liveState`: flashing blue dot = working, green check = active
+  but the last turn ended; projects from `running` / `finished`; a dot on rail badges) and
+  `WorkingWord` (a random `WORKING_WORDS` entry every 3 s, shimmering).
   `hooks/useLiveConversation.js` loads the open conversation and
   polls it with its ETag (`lib/live.js` `pollDelay`: 2 s while active, 15 s otherwise, paused
   while the page is hidden). `isWorking` = active + last turn `incomplete`: `ConversationView`
-  then shows the work, marks the last turn "Working…" and keeps the chat at the bottom if it was
+  then shows the work, marks the last turn with a `WorkingWord` and keeps the chat at the bottom if it was
   there; when it flips back the work collapses. `e2e/live.spec.js` appends to a transcript
   mid-test, in its own Playwright project (chromium → live → shells) because it adds the newest project.
 - Prompts: `components/Runs.jsx` `RunsProvider` (`/api/runs`, polled 1.5 s while one runs;
@@ -187,7 +189,7 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   `Terminal.jsx` (lazy: xterm.js + fit addon) keeps one xterm per shell mounted while hidden,
   resets before a reattach's scrollback replay; `lib/shells.js` holds its pure helpers.
 - `components/` — `ProjectsPanel` (collapsible rail; projects whose folder is gone hidden until
-  the header count is clicked; footer = `UserMenu`: user + kebab menu with Settings, theme radio
+  the header count is clicked; footer = `UserMenu`: `greeting` (format.js, by hour) + user + kebab menu with Settings, theme radio
   items and **Log out**, which asks in a `<dialog>`), `ConversationList` (harness filter: icons
   only, "All" and the selected harness with name + count; ✎ = new conversation with the
   filter's harness), `ConversationView`
