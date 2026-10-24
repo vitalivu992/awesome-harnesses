@@ -86,12 +86,17 @@ func stepSlug(dir, rest string) (string, string) {
 	}
 	best, bestRest := "", rest
 	for _, e := range entries {
-		if !e.IsDir() {
+		if !e.IsDir() && e.Type()&os.ModeSymlink == 0 {
 			continue
 		}
 		name := looseSlug(e.Name())
 		if name == "" || len(name) <= len(best)-len(dir)-1 {
 			continue
+		}
+		if !e.IsDir() { // a symlink (macOS /var, /tmp): only if it points at a folder
+			if st, err := os.Stat(filepath.Join(dir, e.Name())); err != nil || !st.IsDir() {
+				continue
+			}
 		}
 		switch {
 		case rest == name:
