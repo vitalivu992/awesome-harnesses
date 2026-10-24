@@ -69,8 +69,12 @@ type Project struct {
 	Name   string `json:"name"`
 	Exists bool   `json:"exists"`
 	// Counts: conversations per harness id.
-	Counts    map[string]int `json:"counts"`
-	UpdatedAt string         `json:"updatedAt,omitempty"`
+	Counts map[string]int `json:"counts"`
+	// Running: conversations the agent is still working on (active, last turn incomplete).
+	Running int `json:"running,omitempty"`
+	// Finished: active conversations whose last turn has ended (the agent just finished).
+	Finished  int    `json:"finished,omitempty"`
+	UpdatedAt string `json:"updatedAt,omitempty"`
 }
 
 // ErrNotFound is returned for an unknown project or conversation.
@@ -182,6 +186,12 @@ func (c *Catalog) Projects() []Project {
 			byKey[it.key] = p
 		}
 		p.Counts[it.harness]++
+		switch c.liveState(it) {
+		case liveRunning:
+			p.Running++
+		case liveFinished:
+			p.Finished++
+		}
 		if it.mtime.After(latest[it.key]) {
 			latest[it.key] = it.mtime
 		}
@@ -300,6 +310,32 @@ func (c *Catalog) ConversationIfChanged(harness, id, known string) (*conv.Conver
 }
 
 func (c *Catalog) active(it item) bool { return c.now().Sub(it.mtime) < c.cfg.ActiveWindow }
+
+type liveStatus int
+
+const (
+	liveNone     liveStatus = iota
+	liveRunning             // the agent is still on the conversation's last turn
+	liveFinished            // active, but the last turn has ended
+)
+
+// liveState: whether the agent is working on an active conversation or has
+// just finished. Only active items are summarized, so listing projects parses
+// at most the few live ones.
+func (c *Catalog) liveState(it item) liveStatus {
+	if !c.active(it) {
+		return liveNone
+	}
+	sum, err := c.summary(it)
+	switch {
+	case err != nil || sum.Turns == 0:
+		return liveNone
+	case sum.Status == conv.StatusIncomplete:
+		return liveRunning
+	default:
+		return liveFinished
+	}
+}
 
 // enrich adds what isn't in the conversation itself: the active flag, the
 // project directory as cwd when the harness doesn't record one, and the

@@ -149,6 +149,41 @@ func TestProjectsMergeHarnesses(t *testing.T) {
 	}
 }
 
+func TestProjectsRunning(t *testing.T) {
+	c, project := setup(t)
+	counts := func() (running, finished int) {
+		for _, p := range c.Projects() {
+			if p.Key == project {
+				return p.Running, p.Finished
+			}
+		}
+		t.Fatal("project not listed")
+		return 0, 0
+	}
+	before, finished := counts()
+	if finished == 0 {
+		t.Fatal("finished = 0, want the freshly written conversations counted as just finished")
+	}
+
+	// A prompt the agent hasn't answered yet: c1 is now running.
+	path := filepath.Join(filepath.Dir(filepath.Dir(project)), ".claude", "projects", "-"+looseSlug(project), "c1.jsonl")
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(f, `{"type":"user","cwd":%q,"timestamp":"2026-10-20T10:01:00Z","message":{"role":"user","content":"more"}}`+"\n", project)
+	f.Close()
+	if r, f := counts(); r != before+1 || f != finished-1 {
+		t.Fatalf("running, finished = %d, %d after an unanswered prompt, want %d, %d", r, f, before+1, finished-1)
+	}
+
+	// Once the active window passes nothing counts as running or finished.
+	c.now = func() time.Time { return time.Now().Add(time.Hour) }
+	if r, f := counts(); r != 0 || f != 0 {
+		t.Fatalf("running, finished = %d, %d after the active window, want 0, 0", r, f)
+	}
+}
+
 func TestConversationsEnrichCursor(t *testing.T) {
 	c, project := setup(t)
 	sums, err := c.Conversations(project)
