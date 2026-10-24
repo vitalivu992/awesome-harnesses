@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { HARNESS_IDS, harnessName, plural, relativeTime } from "../lib/format.js"
 import { readPrefs, writePref } from "../lib/prefs.js"
 import { HarnessIcon } from "./HarnessIcon.jsx"
-import { ThemeToggle } from "./ThemeToggle.jsx"
+import { UserMenu } from "./UserMenu.jsx"
 
 function initials(name) {
   const words = String(name || "?").split(/[^A-Za-z0-9]+/).filter(Boolean)
@@ -20,22 +20,6 @@ export function filterProjects(projects, text) {
   const needle = String(text || "").trim().toLowerCase()
   if (!needle) return projects
   return projects.filter((p) => `${p.name} ${p.path}`.toLowerCase().includes(needle))
-}
-
-function LogoutButton({ user, onLogout, compact = false }) {
-  return (
-    <button
-      type="button"
-      className="ah-icon-btn ah-logout"
-      id={compact ? undefined : "ahLogout"}
-      onClick={onLogout}
-      title={`Logged in as ${user}. Log out`}
-      aria-label="Log out"
-    >
-      <i className="fa-solid fa-right-from-bracket" aria-hidden="true"></i>
-      {compact ? null : <span>Log out</span>}
-    </button>
-  )
 }
 
 /** A project whose folder is gone (projects without a folder, like no-workspace, aren't). */
@@ -106,8 +90,7 @@ export function ProjectsPanel({
             </li>
           ))}
         </ul>
-        <ThemeToggle compact />
-        <LogoutButton user={user} onLogout={onLogout} compact />
+        <UserMenu user={user} onLogout={onLogout} compact />
       </nav>
     )
   }
@@ -203,11 +186,7 @@ export function ProjectsPanel({
         {projects && !shown.length ? <li className="ah-empty">No projects match.</li> : null}
       </ul>
       <footer className="ah-panel-foot">
-        <ThemeToggle />
-        <span className="ah-user" title={`Logged in as ${user}`}>
-          <i className="fa-solid fa-circle-user" aria-hidden="true"></i> {user}
-        </span>
-        <LogoutButton user={user} onLogout={onLogout} />
+        <UserMenu user={user} onLogout={onLogout} />
       </footer>
     </nav>
   )

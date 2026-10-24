@@ -119,20 +119,165 @@ body {
 .ah-panel-foot {
   display: flex;
   align-items: center;
-  gap: 4px;
   border-top: 1px solid var(--borderColor-muted, #d8dee4);
   padding: 6px 8px;
 }
 
-.ah-user {
+/* ---------- user menu (components/UserMenu.jsx) ---------- */
+
+.ah-user-menu {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   flex: 1;
+  min-width: 0;
+}
+
+.ah-user-menu--compact {
+  flex: 0 0 auto;
+}
+
+.ah-user {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 0 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.ah-user > i {
+  color: var(--fgColor-muted, #59636e);
+  font-size: 16px;
+}
+
+.ah-user__name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  text-align: right;
+}
+
+.ah-user-menu .ah-icon-btn.is-open {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+  color: var(--fgColor-default, #1f2328);
+}
+
+/* GitHub's action menu, opening upwards from the footer. */
+.ah-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 30;
+  width: 220px;
+  padding: 6px 0;
+  border-radius: 12px;
+  background: var(--overlay-bgColor, var(--bgColor-default, #fff));
+  box-shadow: var(--shadow-floating-small, 0 0 0 1px #d1d9e080, 0 6px 18px #25292e1f);
+}
+
+.ah-user-menu--compact .ah-menu {
+  left: 0;
+  right: auto;
+}
+
+.ah-menu__head {
+  margin: 0;
+  padding: 6px 14px 8px;
   color: var(--fgColor-muted, #59636e);
   font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-menu__head strong {
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ah-menu__group {
+  margin: 0;
+  padding: 4px 14px;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ah-menu__divider {
+  height: 1px;
+  margin: 6px 0;
+  background: var(--borderColor-muted, #d8dee4);
+}
+
+.ah-menu__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% - 12px);
+  margin: 0 6px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--fgColor-default, #1f2328);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ah-menu__item > i:first-child {
+  width: 16px;
+  color: var(--fgColor-muted, #59636e);
+  text-align: center;
+}
+
+.ah-menu__item:hover,
+.ah-menu__item:focus-visible {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+  outline: none;
+}
+
+.ah-menu__check {
+  margin-left: auto;
+  color: var(--fgColor-accent, #0969da);
+}
+
+/* The logout confirmation. */
+.ah-dialog {
+  width: min(380px, calc(100vw - 32px));
+  padding: 16px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--overlay-bgColor, var(--bgColor-default, #fff));
+  color: var(--fgColor-default, #1f2328);
+  box-shadow: var(--shadow-floating-large, 0 8px 24px rgba(140, 149, 159, 0.3));
+}
+
+.ah-dialog::backdrop {
+  background: var(--overlay-backdrop-bgColor, rgba(31, 35, 40, 0.4));
+}
+
+.ah-dialog__title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.ah-dialog__body {
+  margin: 0;
+  color: var(--fgColor-muted, #59636e);
+  line-height: 1.5;
+}
+
+.ah-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
 }
 
 .ah-brand {
@@ -252,6 +397,16 @@ body {
 
 .ah-btn--primary:hover {
   background: #1a7f37;
+}
+
+.ah-btn--danger {
+  color: var(--fgColor-danger, #d1242f);
+}
+
+.ah-btn--danger:hover {
+  background: var(--bgColor-danger-emphasis, #cf222e);
+  border-color: transparent;
+  color: #fff;
 }
 
 .ah-btn__caret {

@@ -29,9 +29,32 @@ test("logs in with an unlock sequence, then logs out", async ({ page }) => {
   await expect(page.locator("#ahProjects")).toContainText("demo_app")
   await expect(page.locator("#ahLogin")).toHaveCount(0)
 
+  // Log out from the account menu, after a confirmation.
+  await page.locator("#ahUserMenu").click()
   await page.locator("#ahLogout").click()
+  await expect(page.locator("#ahLogoutDialog")).toBeVisible()
+  await page.getByRole("button", { name: "Cancel" }).click()
+  await expect(page.locator("#ahLogoutDialog")).toBeHidden()
+  await expect(page.locator("#ahLogin")).toHaveCount(0)
+  await page.locator("#ahUserMenu").click()
+  await page.locator("#ahLogout").click()
+  await page.locator("#ahLogoutConfirm").click()
   await expect(page.locator("#ahLogin")).toBeVisible()
   expect((await page.request.get("/api/projects")).status()).toBe(401)
+})
+
+test("the account menu switches the theme", async ({ page }) => {
+  const res = await page.request.post("/api/auth/login", { data: { username: "demo", password: "demo-password" } })
+  expect(res.ok()).toBeTruthy()
+  await page.goto("/")
+  await page.locator("#ahUserMenu").click()
+  await page.getByRole("menuitemradio", { name: "Dark theme" }).click()
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "dark")
+  await expect(page.getByRole("menuitemradio", { name: "Dark theme" })).toHaveAttribute("aria-checked", "true")
+  await page.getByRole("menuitemradio", { name: "Light theme" }).click()
+  await expect(page.locator("html")).toHaveAttribute("data-color-mode", "light")
+  await page.keyboard.press("Escape")
+  await expect(page.getByRole("menu")).toHaveCount(0)
 })
 
 test("a click skips the unlock sequence", async ({ page }) => {
