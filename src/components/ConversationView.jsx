@@ -5,7 +5,7 @@ import { Composer } from "./Composer.jsx"
 import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
 import { Markdown } from "./Markdown.jsx"
 import { ResumeButton } from "./ResumeButton.jsx"
-import { RunningBar } from "./Running.jsx"
+import { RunningBar, WorkingWord } from "./Running.jsx"
 import { StatusIcon } from "./StatusIcon.jsx"
 import { Step } from "./Step.jsx"
 
@@ -125,7 +125,7 @@ function AssistantMessage({ entry, harness, index, expandAll, live }) {
         ) : null}
         {live ? (
           <p className="ah-turn-status ah-turn-status--live">
-            <i className="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Working…
+            <i className="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> <WorkingWord />
           </p>
         ) : status !== "done" ? (
           <p className={`ah-turn-status ah-turn-status--${status}`}>

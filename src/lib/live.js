@@ -21,6 +21,20 @@ export function liveState(conversation) {
   return conversation.status === "incomplete" ? "running" : "finished"
 }
 
+/** What the agent is doing, Claude Code style, shown one at a time under its last answer. */
+export const WORKING_WORDS = [
+  "Working", "Pondering", "Brewing", "Cogitating", "Mulling", "Noodling", "Percolating",
+  "Ruminating", "Conjuring", "Crafting", "Tinkering", "Simmering", "Marinating", "Musing",
+  "Deliberating", "Synthesizing", "Untangling", "Wrangling", "Puzzling", "Churning",
+  "Hatching", "Forging", "Spelunking", "Reticulating", "Finagling", "Moseying",
+]
+
+/** A random working word other than `current`. */
+export function nextWorkingWord(current, random = Math.random) {
+  const pool = WORKING_WORDS.filter((w) => w !== current)
+  return pool[Math.floor(random() * pool.length) % pool.length]
+}
+
 /** The scroll box is at (or within `slack` px of) its bottom. */
 export function atBottom(el, slack = 80) {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= slack

@@ -1,9 +1,26 @@
+import { useEffect, useState } from "react"
+import { nextWorkingWord } from "../lib/live.js"
+
 /**
  * Windows 11's indeterminate progress bar, laid on the bottom edge of its
  * positioned parent (the view header): the agent is at work there.
  */
 export function RunningBar({ className = "" }) {
   return <span className={`ah-progress ${className}`.trim()} aria-hidden="true"></span>
+}
+
+/** "Pondering…", "Brewing…": a new word every `every` ms while the agent works. */
+export function WorkingWord({ every = 3000 }) {
+  const [word, setWord] = useState(() => nextWorkingWord(""))
+  useEffect(() => {
+    const timer = setInterval(() => setWord((w) => nextWorkingWord(w)), every)
+    return () => clearInterval(timer)
+  }, [every])
+  return (
+    <span className="ah-working-word" key={word}>
+      {word}…
+    </span>
+  )
 }
 
 const LIVE = {

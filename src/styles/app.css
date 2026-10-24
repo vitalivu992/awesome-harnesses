@@ -931,6 +931,45 @@ body {
   border-radius: 0;
 }
 
+/* "Pondering…" under the last answer: fades in per word, with a light sweeping across it. */
+.ah-working-word {
+  background: linear-gradient(
+      100deg,
+      currentColor 0%,
+      currentColor 40%,
+      var(--ah-working-shine, #8fc8ff) 50%,
+      currentColor 60%,
+      currentColor 100%
+    )
+    0 0 / 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation:
+    ah-word-in 0.3s ease-out,
+    ah-word-shine 2s linear infinite;
+}
+
+[data-color-mode="dark"] .ah-working-word {
+  --ah-working-shine: #d6ecff;
+}
+
+@keyframes ah-word-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes ah-word-shine {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: 0 0;
+  }
+}
+
 /* The live icon on list rows: pulsing broadcast while an agent works, a check once it just finished. */
 .ah-live {
   display: inline-flex;
@@ -973,8 +1012,14 @@ body {
 
   .ah-status--active,
   .ah-live--running > i,
-  .ah-rail__live.ah-live--running {
+  .ah-rail__live.ah-live--running,
+  .ah-working-word {
     animation: none;
+  }
+
+  .ah-working-word {
+    background: none;
+    -webkit-text-fill-color: currentColor;
   }
 }
 
