@@ -1,10 +1,12 @@
-// Writes a fake home for e2e: one project used from Claude Code, Cursor, Codex and pi.
+// Writes a fake home for e2e: one project used from Claude Code, Cursor, Codex and pi, and an
+// older Codex session in a folder that no longer exists (hidden by default).
 // Run by playwright.config.js before it starts the server.
 import { mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 
 export const HOME = resolve(".e2e-home")
 export const PROJECT = join(HOME, "work", "demo_app")
+export const GONE = join(HOME, "work", "old_app")
 
 const slug = (p) => p.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")
 
@@ -63,6 +65,12 @@ export function makeFixtures() {
     { timestamp: "2026-10-18T08:00:03Z", type: "response_item", payload: { type: "function_call_output", call_id: "k1", output: "go1.27.1" } },
     { timestamp: "2026-10-18T08:00:04Z", type: "response_item", payload: { type: "message", role: "assistant", content: [{ type: "output_text", text: "Bumped to **1.27**." }] } },
     { timestamp: "2026-10-18T08:00:05Z", type: "event_msg", payload: { type: "task_complete" } },
+  ])
+  write(join(HOME, ".codex", "sessions", "2026", "10", "10", "rollout-2026-10-10T08-00-00-cx-old.jsonl"), [
+    { timestamp: "2026-10-10T08:00:00Z", type: "session_meta", payload: { id: "cx-old", cwd: GONE, source: "cli" } },
+    { timestamp: "2026-10-10T08:00:01Z", type: "response_item", payload: { type: "message", role: "user", content: [{ type: "input_text", text: "Tidy up" }] } },
+    { timestamp: "2026-10-10T08:00:02Z", type: "response_item", payload: { type: "message", role: "assistant", content: [{ type: "output_text", text: "Done." }] } },
+    { timestamp: "2026-10-10T08:00:03Z", type: "event_msg", payload: { type: "task_complete" } },
   ])
   write(join(HOME, ".pi", "agent", "sessions", "--demo--", "2026-10-17T08-00-00_pi-1.jsonl"), [
     { type: "session", version: 3, id: "pi-1", timestamp: "2026-10-17T08:00:00Z", cwd: PROJECT },

@@ -64,6 +64,21 @@ test("collapses the projects panel and filters by harness", async ({ page }) => 
   await expect(page.locator("#ahConversations")).toContainText("Fix the login form")
 })
 
+test("hides projects whose folder is gone until the count is clicked", async ({ page }) => {
+  await page.goto("/")
+  const rows = page.locator("#ahProjects [data-project]")
+  await expect(rows).toHaveCount(1)
+  const count = page.locator("#ahProjectsCount")
+  await expect(count).toHaveText("1")
+  await count.click()
+  await expect(count).toHaveText("2")
+  await expect(rows).toHaveCount(2)
+  await expect(rows.nth(1)).toContainText("old_app")
+  await expect(rows.nth(1)).toHaveClass(/is-missing/)
+  await count.click()
+  await expect(rows).toHaveCount(1)
+})
+
 test("shows Codex and pi conversations with their resume commands", async ({ page }) => {
   await page.goto(`/?project=${encodeURIComponent(PROJECT)}&c=codex:cx-1`)
   const chat = page.locator("#ahChat")

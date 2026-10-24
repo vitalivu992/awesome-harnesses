@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react"
-import { HARNESS_IDS, harnessName, relativeTime } from "../lib/format.js"
+import { HARNESS_IDS, harnessName, plural, relativeTime } from "../lib/format.js"
+import { readPrefs, writePref } from "../lib/prefs.js"
 import { HarnessIcon } from "./HarnessIcon.jsx"
 import { ThemeToggle } from "./ThemeToggle.jsx"
 
@@ -37,9 +38,24 @@ function LogoutButton({ user, onLogout, compact = false }) {
   )
 }
 
+/** A project whose folder is gone (projects without a folder, like no-workspace, aren't). */
+export function isMissing(project) {
+  return Boolean(project.path) && !project.exists
+}
+
 /**
- * First column: every project with agent conversations, with a count per harness. Collapses to
- * a rail of initials badges.
+ * The projects the panel lists: all of them with `showMissing`, else those
+ * whose folder still exists, plus the selected one so it never vanishes.
+ */
+export function listedProjects(projects, { showMissing = false, selectedKey = "" } = {}) {
+  if (showMissing) return projects
+  return projects.filter((p) => !isMissing(p) || p.key === selectedKey)
+}
+
+/**
+ * First column: every project with agent conversations, with a count per harness. Projects
+ * whose folder no longer exists are hidden until the count in the header is clicked. Collapses
+ * to a rail of initials badges.
  */
 export function ProjectsPanel({
   projects,
@@ -55,7 +71,17 @@ export function ProjectsPanel({
   onOpenShell,
 }) {
   const [text, setText] = useState("")
-  const shown = useMemo(() => filterProjects(projects || [], text), [projects, text])
+  const [showMissing, setShowMissing] = useState(() => Boolean(readPrefs().showMissingProjects))
+  const listed = useMemo(
+    () => listedProjects(projects || [], { showMissing, selectedKey }),
+    [projects, showMissing, selectedKey]
+  )
+  const shown = useMemo(() => filterProjects(listed, text), [listed, text])
+  const missing = (projects || []).filter(isMissing).length
+  const toggleMissing = () => {
+    writePref("showMissingProjects", !showMissing)
+    setShowMissing(!showMissing)
+  }
 
   if (collapsed) {
     return (
@@ -64,7 +90,7 @@ export function ProjectsPanel({
           <i className="fa-solid fa-angles-right" aria-hidden="true"></i>
         </button>
         <ul className="ah-rail">
-          {(projects || []).map((p) => (
+          {listed.map((p) => (
             <li key={p.key}>
               <button
                 type="button"
@@ -92,7 +118,26 @@ export function ProjectsPanel({
         <div className="ah-brand">
           <i className="fa-solid fa-layer-group" aria-hidden="true"></i>
           <span>Projects</span>
-          {projects ? <span className="ah-count">{projects.length}</span> : null}
+          {projects && missing ? (
+            <button
+              type="button"
+              className="ah-count ah-count--toggle"
+              id="ahProjectsCount"
+              onClick={toggleMissing}
+              aria-pressed={showMissing}
+              title={
+                showMissing
+                  ? `${plural(projects.length, "project")}. Click to hide the ${missing} whose folder no longer exists`
+                  : `${plural(listed.length, "project")}. Click to also show ${missing} whose folder no longer exists`
+              }
+            >
+              {listed.length}
+            </button>
+          ) : projects ? (
+            <span className="ah-count" id="ahProjectsCount">
+              {projects.length}
+            </span>
+          ) : null}
         </div>
         <div className="ah-panel-head__actions">
           <button type="button" className="ah-icon-btn" onClick={onRefresh} title="Reload" aria-label="Reload projects">

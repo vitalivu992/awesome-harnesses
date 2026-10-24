@@ -160,6 +160,22 @@ body {
   text-align: center;
 }
 
+.ah-count--toggle {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.ah-count--toggle:hover {
+  background: var(--bgColor-neutral-emphasis, #59636e);
+  color: var(--fgColor-onEmphasis, #fff);
+}
+
+.ah-count--toggle[aria-pressed="true"] {
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  color: var(--fgColor-accent, #0969da);
+}
+
 .ah-list {
   list-style: none;
   margin: 0;

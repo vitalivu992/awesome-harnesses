@@ -10,7 +10,7 @@ import {
 import { readPrefs, writePref } from "./lib/prefs.js"
 import { useFetch } from "./hooks/useFetch.js"
 import { useLiveConversation } from "./hooks/useLiveConversation.js"
-import { ProjectsPanel } from "./components/ProjectsPanel.jsx"
+import { ProjectsPanel, isMissing } from "./components/ProjectsPanel.jsx"
 import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
 import { LoginScreen } from "./components/LoginScreen.jsx"
@@ -44,10 +44,12 @@ function Browser({ user, onLogout }) {
   const [harness, id] = splitConversationKey(convKey)
   const conversation = useLiveConversation(harness, id)
 
-  // Open the most recently active project when none is selected.
+  // Open the most recently active project when none is selected, preferring one whose folder
+  // still exists (the others are hidden by default).
   useEffect(() => {
     if (!projectKey && projects.data?.length) {
-      setParams({ project: projects.data[0].key }, { replace: true })
+      const first = projects.data.find((p) => !isMissing(p)) || projects.data[0]
+      setParams({ project: first.key }, { replace: true })
     }
   }, [projectKey, projects.data, setParams])
 
