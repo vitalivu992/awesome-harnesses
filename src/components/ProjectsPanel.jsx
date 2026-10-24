@@ -67,6 +67,7 @@ export function ProjectsPanel({
   onRefresh,
   user,
   onLogout,
+  onOpenSettings,
   onOpenShell,
 }) {
   const [text, setText] = useState("")
@@ -109,7 +110,7 @@ export function ProjectsPanel({
             )
           })}
         </ul>
-        <UserMenu user={user} onLogout={onLogout} compact />
+        <UserMenu user={user} onLogout={onLogout} onOpenSettings={onOpenSettings} compact />
       </nav>
     )
   }
@@ -209,7 +210,7 @@ export function ProjectsPanel({
         {projects && !shown.length ? <li className="ah-empty">No projects match.</li> : null}
       </ul>
       <footer className="ah-panel-foot">
-        <UserMenu user={user} onLogout={onLogout} />
+        <UserMenu user={user} onLogout={onLogout} onOpenSettings={onOpenSettings} />
       </footer>
     </nav>
   )

@@ -48,11 +48,11 @@ function LogoutDialog({ open, onCancel, onConfirm }) {
 }
 
 /**
- * The projects panel's footer: the username and a kebab menu with the theme
- * (system / light / dark) and Log out, which asks first. `compact` (the
- * collapsed rail) shows only the kebab.
+ * The projects panel's footer: the username and a kebab menu with Settings,
+ * the theme (system / light / dark) and Log out, which asks first. `compact`
+ * (the collapsed rail) shows only the kebab.
  */
-export function UserMenu({ user, onLogout, compact = false }) {
+export function UserMenu({ user, onLogout, onOpenSettings, compact = false }) {
   const { pref } = useTheme()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -113,6 +113,20 @@ export function UserMenu({ user, onLogout, compact = false }) {
           <p className="ah-menu__head">
             Logged in as <strong>{user}</strong>
           </p>
+          <div className="ah-menu__divider" role="separator"></div>
+          <button
+            type="button"
+            role="menuitem"
+            className="ah-menu__item"
+            id={compact ? undefined : "ahOpenSettings"}
+            onClick={() => {
+              setOpen(false)
+              onOpenSettings?.()
+            }}
+          >
+            <i className="fa-solid fa-gear" aria-hidden="true"></i>
+            <span>Settings</span>
+          </button>
           <div className="ah-menu__divider" role="separator"></div>
           <p className="ah-menu__group">Theme</p>
           {THEMES.map((t) => (

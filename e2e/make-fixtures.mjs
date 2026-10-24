@@ -1,12 +1,16 @@
-// Writes a fake home for e2e: one project used from Claude Code, Cursor, Codex and pi, and an
-// older Codex session in a folder that no longer exists (hidden by default).
+// Writes a fake home for e2e: one project used from Claude Code, Cursor, Codex and pi, an
+// older Codex session in a folder that no longer exists (hidden by default), a Claude skill and
+// command, and a fake `claude` CLI in bin/ (the server's LAUNCH_PATH) for the prompts sent from the UI.
 // Run by playwright.config.js before it starts the server.
-import { mkdirSync, rmSync, writeFileSync } from "node:fs"
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from "node:fs"
 import { dirname, join, resolve } from "node:path"
 
 export const HOME = resolve(".e2e-home")
 export const PROJECT = join(HOME, "work", "demo_app")
 export const GONE = join(HOME, "work", "old_app")
+export const BIN = join(HOME, "bin")
+// Every argv the fake claude ran with, one JSON array per line.
+export const CLAUDE_LOG = join(HOME, "claude-args.log")
 
 const slug = (p) => p.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")
 
@@ -85,4 +89,52 @@ export function makeFixtures() {
   ])
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) makeFixtures()
+// Like claude -p: appends the prompt to the session's transcript (in the folder it runs in), then
+// after a moment the answer "Echo: <prompt>". A prompt containing "please fail" fails instead.
+const FAKE_CLAUDE = `#!${process.execPath}
+const fs = require("fs")
+const path = require("path")
+const args = process.argv.slice(2)
+fs.appendFileSync(${JSON.stringify(CLAUDE_LOG)}, JSON.stringify(args) + "\\n")
+const sep = args.indexOf("--")
+const prompt = args.slice(sep + 1).join(" ")
+const flag = (name) => {
+  const i = args.indexOf(name)
+  return i >= 0 && i < sep ? args[i + 1] : ""
+}
+if (prompt.includes("please fail")) {
+  console.error("Error: simulated failure")
+  process.exit(2)
+}
+const id = flag("--resume") || flag("--session-id")
+const cwd = process.cwd()
+const slug = cwd.replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "")
+const file = path.join(${JSON.stringify(join(HOME, ".claude", "projects"))}, "-" + slug, id + ".jsonl")
+fs.mkdirSync(path.dirname(file), { recursive: true })
+const base = { cwd, isSidechain: false, sessionId: id }
+const line = (o) => fs.appendFileSync(file, JSON.stringify({ ...base, timestamp: new Date().toISOString(), ...o }) + "\\n")
+line({ type: "user", message: { role: "user", content: prompt } })
+setTimeout(() => {
+  line({ type: "assistant", message: { model: flag("--model") || "claude-opus-5-5", content: [{ type: "text", text: "Echo: " + prompt }], stop_reason: "end_turn" } })
+}, 1500)
+`
+
+export function makeTools() {
+  mkdirSync(BIN, { recursive: true })
+  // The repo's package.json says "module"; the fake is CommonJS.
+  writeFileSync(join(BIN, "package.json"), '{"type":"commonjs"}\n')
+  writeFileSync(join(BIN, "claude"), FAKE_CLAUDE)
+  chmodSync(join(BIN, "claude"), 0o755)
+  writeFileSync(CLAUDE_LOG, "")
+  const skill = join(HOME, ".claude", "skills", "review-code", "SKILL.md")
+  mkdirSync(dirname(skill), { recursive: true })
+  writeFileSync(skill, "---\nname: review-code\ndescription: Review the changed code for bugs\n---\nReview it.\n")
+  const command = join(HOME, ".claude", "commands", "commit.md")
+  mkdirSync(dirname(command), { recursive: true })
+  writeFileSync(command, "---\ndescription: Create grouped commits\n---\nCommit the changes.\n")
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  makeFixtures()
+  makeTools()
+}

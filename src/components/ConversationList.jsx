@@ -18,9 +18,10 @@ export function filterConversations(conversations, { harness = "", text = "" } =
 
 /**
  * Second column: the selected project's conversations, newest first. The ones an agent is
- * working on, or has just finished, carry a live icon.
+ * working on, or has just finished, carry a live icon. "New" starts a conversation with
+ * the harness the filter shows (`onNew(harness)`, "" for All).
  */
-export function ConversationList({ project, conversations, loading, error, selectedId, onSelect, onRefresh }) {
+export function ConversationList({ project, conversations, loading, error, selectedId, onSelect, onRefresh, onNew, creating = false }) {
   const [text, setText] = useState("")
   const [harness, setHarness] = useState("")
   const shown = useMemo(() => filterConversations(conversations, { harness, text }), [conversations, harness, text])
@@ -51,9 +52,26 @@ export function ConversationList({ project, conversations, loading, error, selec
             </span>
           ) : null}
         </div>
-        <button type="button" className="ah-icon-btn" onClick={onRefresh} title="Reload" aria-label="Reload conversations">
-          <i className={`fa-solid fa-rotate${loading ? " fa-spin" : ""}`} aria-hidden="true"></i>
-        </button>
+        <div className="ah-panel-head__actions">
+          <button type="button" className="ah-icon-btn" onClick={onRefresh} title="Reload" aria-label="Reload conversations">
+            <i className={`fa-solid fa-rotate${loading ? " fa-spin" : ""}`} aria-hidden="true"></i>
+          </button>
+          <button
+            type="button"
+            className={`ah-icon-btn ah-new-btn${creating ? " is-open" : ""}`}
+            id="ahNewConversationBtn"
+            onClick={() => onNew?.(harness)}
+            disabled={!project.exists}
+            title={
+              project.exists
+                ? `New ${harness ? `${harnessName(harness)} ` : ""}conversation in ${project.name}`
+                : "The project's folder doesn't exist any more"
+            }
+            aria-label="New conversation"
+          >
+            <i className="fa-regular fa-pen-to-square" aria-hidden="true"></i>
+          </button>
+        </div>
       </header>
       <div className="ah-search">
         <i className="fa-solid fa-magnifying-glass" aria-hidden="true"></i>

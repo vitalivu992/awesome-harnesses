@@ -88,3 +88,44 @@ export async function createShell({ cwd = "", run = "" } = {}) {
 export async function killShell(id) {
   await getJSON(`/api/shells/${encodeURIComponent(id)}`, { method: "DELETE" })
 }
+
+// Prompts sent to the harness CLIs (internal/runs): each run is one headless CLI process.
+
+/** The harnesses: CLI, efforts, fast mode, bypass flag, and `found` (its path, "" when not installed). */
+export async function fetchHarnesses(opts) {
+  return (await getJSON("/api/harnesses", opts)).harnesses || []
+}
+
+/** Models the harness offers, as suggestions; `refresh` asks the CLI again. */
+export async function fetchModels(harness, { refresh = false, ...opts } = {}) {
+  const q = refresh ? "?refresh=1" : ""
+  return (await getJSON(`/api/harnesses/${encodeURIComponent(harness)}/models${q}`, opts)).models || []
+}
+
+/** The slash commands and skills of a harness for a folder. */
+export async function fetchCommands(harness, cwd, opts) {
+  const q = new URLSearchParams({ cwd: cwd || "" })
+  return (await getJSON(`/api/harnesses/${encodeURIComponent(harness)}/commands?${q}`, opts)).commands || []
+}
+
+/** The command a request would run: `{ argv, cwd, command, notes }`. */
+export async function previewRun(req, opts) {
+  return getJSON("/api/runs/preview", { ...opts, method: "POST", body: req })
+}
+
+export async function fetchRuns(opts) {
+  return (await getJSON("/api/runs", opts)).runs || []
+}
+
+export async function fetchRun(id, opts) {
+  return getJSON(`/api/runs/${encodeURIComponent(id)}`, opts)
+}
+
+/** Sends the prompt: resolves to the started run. */
+export async function startRun(req) {
+  return getJSON("/api/runs", { method: "POST", body: req })
+}
+
+export async function stopRun(id) {
+  await getJSON(`/api/runs/${encodeURIComponent(id)}`, { method: "DELETE" })
+}

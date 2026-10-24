@@ -8,6 +8,8 @@ import {
   logout,
 } from "./lib/api.js"
 import { readPrefs, writePref } from "./lib/prefs.js"
+import { HARNESS_IDS } from "./lib/format.js"
+import { readSettings } from "./lib/settings.js"
 import { useFetch } from "./hooks/useFetch.js"
 import { useLiveConversation } from "./hooks/useLiveConversation.js"
 import { listPollDelay } from "./lib/live.js"
@@ -16,6 +18,9 @@ import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
 import { LOCK_MS, LoginScreen, prefersReducedMotion } from "./components/LoginScreen.jsx"
 import { ShellPanel, ShellProvider, useShells } from "./components/Shells.jsx"
+import { NewConversation } from "./components/NewConversation.jsx"
+import { RunsProvider, useRuns } from "./components/Runs.jsx"
+import { SettingsPanel } from "./components/Settings.jsx"
 
 /** "claude:<id>" → ["claude", "<id>"]. */
 export function splitConversationKey(key) {
@@ -25,15 +30,20 @@ export function splitConversationKey(key) {
 }
 
 /**
- * The browser: projects | conversations | conversation. The selection lives
- * in the URL (`?project=<key>&c=<harness>:<id>`), so a conversation can be
- * linked to and the back button works.
+ * The browser: projects | conversations | conversation (or a new one) |
+ * settings when open. The selection lives in the URL
+ * (`?project=<key>&c=<harness>:<id>`, `&new=<harness>` for a new
+ * conversation), so a conversation can be linked to and the back button works.
  */
 function Browser({ user, onLogout }) {
   const { openShell, setError: setShellError } = useShells()
+  const runs = useRuns()
   const [params, setParams] = useSearchParams()
   const projectKey = params.get("project") || ""
   const convKey = params.get("c") || ""
+  const newHarness = HARNESS_IDS.includes(params.get("new")) ? params.get("new") : ""
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsFocus, setSettingsFocus] = useState("")
   const [collapsed, setCollapsed] = useState(() => Boolean(readPrefs().projectsCollapsed))
   const [projectsReload, setProjectsReload] = useState(0)
   const [convsReload, setConvsReload] = useState(0)
@@ -47,7 +57,8 @@ function Browser({ user, onLogout }) {
     poll: (list) => listPollDelay(list?.some((c) => c.active)),
   })
   const [harness, id] = splitConversationKey(convKey)
-  const conversation = useLiveConversation(harness, id)
+  const run = runs.runFor(harness, id)
+  const conversation = useLiveConversation(harness, id, { running: Boolean(run?.running) })
 
   // Open the most recently active project when none is selected, preferring one whose folder
   // still exists (the others are hidden by default).
@@ -67,6 +78,22 @@ function Browser({ user, onLogout }) {
 
   const selectProject = useCallback((key) => setParams({ project: key }), [setParams])
   const selectConversation = useCallback((key) => setParams({ project: projectKey, c: key }), [setParams, projectKey])
+  // "New" uses the harness the filter shows, else the one in the settings.
+  const newConversation = useCallback(
+    (filter) => setParams({ project: projectKey, new: filter || readSettings().defaultHarness }),
+    [setParams, projectKey]
+  )
+  const conversationStarted = useCallback(
+    (h, session) => {
+      setParams({ project: projectKey, c: `${h}:${session}` }, { replace: true })
+      setConvsReload((n) => n + 1)
+    },
+    [setParams, projectKey]
+  )
+  const openSettings = useCallback((focus = "") => {
+    setSettingsFocus(typeof focus === "string" ? focus : "")
+    setSettingsOpen(true)
+  }, [])
   const toggleCollapsed = () => {
     setCollapsed((v) => {
       writePref("projectsCollapsed", !v)
@@ -75,7 +102,7 @@ function Browser({ user, onLogout }) {
   }
 
   return (
-    <div className={`ah-app${collapsed ? " is-collapsed" : ""}`}>
+    <div className={`ah-app${collapsed ? " is-collapsed" : ""}${settingsOpen ? " has-settings" : ""}`}>
       <ProjectsPanel
         projects={projects.data}
         loading={projects.loading}
@@ -87,6 +114,7 @@ function Browser({ user, onLogout }) {
         onRefresh={() => setProjectsReload((n) => n + 1)}
         user={user}
         onLogout={onLogout}
+        onOpenSettings={() => openSettings()}
         onOpenShell={(p) => openShell({ cwd: p.path }).catch(setShellError)}
       />
       <ConversationList
@@ -95,18 +123,38 @@ function Browser({ user, onLogout }) {
         conversations={conversations.data}
         loading={conversations.loading}
         error={conversations.error}
-        selectedId={convKey}
+        selectedId={newHarness ? "" : convKey}
         onSelect={selectConversation}
         onRefresh={() => setConvsReload((n) => n + 1)}
+        onNew={newConversation}
+        creating={Boolean(newHarness)}
       />
       <main className="ah-main">
-        <ConversationView
-          conversation={conversation.data}
-          loading={conversation.loading}
-          error={conversation.error}
-        />
+        {newHarness ? (
+          <NewConversation
+            project={project}
+            harness={newHarness}
+            onHarnessChange={(h) => setParams({ project: projectKey, new: h }, { replace: true })}
+            onStarted={conversationStarted}
+            onCancel={() => setParams({ project: projectKey })}
+            onOpenSettings={() => openSettings(newHarness)}
+          />
+        ) : (
+          <ConversationView
+            conversation={conversation.data}
+            loading={conversation.loading}
+            error={conversation.error}
+            run={run}
+            sentTurns={run ? runs.sentAt(run.id) : 0}
+            onDismissRun={runs.dismiss}
+            onOpenSettings={() => openSettings(harness)}
+          />
+        )}
         <ShellPanel defaultCwd={project?.exists ? project.path : ""} />
       </main>
+      {settingsOpen ? (
+        <SettingsPanel onClose={() => setSettingsOpen(false)} cwd={project?.exists ? project.path : ""} focus={settingsFocus} />
+      ) : null}
     </div>
   )
 }
@@ -169,7 +217,9 @@ function AuthGate() {
     <>
       {user ? (
         <ShellProvider>
-          <Browser user={user} onLogout={onLogout} />
+          <RunsProvider>
+            <Browser user={user} onLogout={onLogout} />
+          </RunsProvider>
         </ShellProvider>
       ) : null}
       {!user || unlocking || locking ? (

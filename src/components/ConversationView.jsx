@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { agentLabel, clockTime, duration, longDateTime, plural, statusMeta } from "../lib/format.js"
 import { atBottom, isWorking } from "../lib/live.js"
+import { Composer } from "./Composer.jsx"
 import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
 import { Markdown } from "./Markdown.jsx"
 import { ResumeButton } from "./ResumeButton.jsx"
@@ -41,6 +42,40 @@ function UserMessage({ entry }) {
           {open ? "Show less" : "Show full message"}
         </button>
       ) : null}
+    </div>
+  )
+}
+
+/** A prompt sent from here that the transcript doesn't have yet. */
+function PendingMessage({ run }) {
+  return (
+    <div className="ah-turn ah-turn--pending" id="ahPending">
+      <div className="ah-msg ah-msg--user">
+        <div className="ah-msg__meta">
+          <span className="ah-msg__who">You</span>
+          <span className="ah-msg__sending">Sent</span>
+        </div>
+        <div className="ah-bubble ah-bubble--user">{run.prompt}</div>
+      </div>
+      <p className="ah-turn-status ah-turn-status--live">
+        <i className="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Waiting for the agent…
+      </p>
+    </div>
+  )
+}
+
+/** How the last prompt sent from here failed, until dismissed. */
+function RunError({ run, onDismiss }) {
+  return (
+    <div className="ah-run-error" role="alert" id="ahRunError">
+      <p>
+        <i className="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> The prompt failed
+        {run.exitCode ? ` (exit code ${run.exitCode})` : ""}.
+        <button type="button" className="ah-link-btn" onClick={onDismiss}>
+          Dismiss
+        </button>
+      </p>
+      <pre className="ah-code">{run.error}</pre>
     </div>
   )
 }
@@ -180,14 +215,23 @@ function Header({ conversation, working, expandAll, onExpandAll }) {
   )
 }
 
+/** Why a prompt can't be sent to the conversation from here, or "". */
+function composerBlocked(c, ours) {
+  if (!c.resumable) return `This chat was started in the ${c.harness === "cursor" ? "Cursor app" : "app"}: continue it there.`
+  if (isWorking(c) && !ours) return "The agent is working on this conversation elsewhere: wait for it to finish."
+  return ""
+}
+
 /**
- * Main column: the conversation as a chat, work details collapsed by default.
- * While the agent is working the work is shown, and the chat follows new
- * messages when it is scrolled to the bottom; once the turn ends the work
- * collapses and the final answer is left.
+ * Main column: the conversation as a chat, work details collapsed by default,
+ * and the prompt box under it. While the agent is working the work is shown,
+ * and the chat follows new messages when it is scrolled to the bottom; once
+ * the turn ends the work collapses and the final answer is left. `run` is the
+ * newest prompt sent from here (`sentTurns`: the turns there were then).
  */
-export function ConversationView({ conversation, loading, error }) {
-  const working = isWorking(conversation)
+export function ConversationView({ conversation, loading, error, run = null, sentTurns = 0, onDismissRun, onOpenSettings }) {
+  const running = Boolean(run?.running)
+  const working = isWorking(conversation) || running
   const [expandAll, setExpandAll] = useState(working)
   useEffect(() => setExpandAll(working), [conversation?.id, working])
 
@@ -203,8 +247,22 @@ export function ConversationView({ conversation, loading, error }) {
     follow.current = atBottom(el)
   }, [conversation, working, expandAll])
 
-  if (error) return <div className="ah-view ah-view--empty"><p className="ah-error">Could not load the conversation: {error.message}</p></div>
+  const failed = run && !run.running && run.error && !run.stopped ? run : null
+  if (error && !failed) return <div className="ah-view ah-view--empty"><p className="ah-error">Could not load the conversation: {error.message}</p></div>
   if (!conversation) {
+    // A new conversation whose transcript isn't written yet (or whose CLI failed first).
+    if (run) {
+      return (
+        <div className="ah-view">
+          <div className="ah-view__scroll" id="ahChat">
+            <div className="ah-chat">
+              {running ? <PendingMessage run={run} /> : null}
+              {failed ? <RunError run={failed} onDismiss={() => onDismissRun?.(failed.id)} /> : null}
+            </div>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="ah-view ah-view--empty">
         <p className="ah-empty ah-empty--center">
@@ -214,6 +272,14 @@ export function ConversationView({ conversation, loading, error }) {
     )
   }
   const c = conversation
+  const pending = running && c.turns <= sentTurns
+  const onSent = () => {
+    follow.current = true
+    requestAnimationFrame(() => {
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    })
+  }
   return (
     <div className="ah-view" aria-busy={loading || undefined}>
       <Header conversation={c} working={working} expandAll={expandAll} onExpandAll={setExpandAll} />
@@ -230,13 +296,28 @@ export function ConversationView({ conversation, loading, error }) {
                   harness={c.harness}
                   index={i}
                   expandAll={expandAll}
-                  live={working && i === c.entries.length - 1}
+                  live={working && !pending && i === c.entries.length - 1}
                 />
               </div>
             )
           )}
-          {!c.entries.length ? <p className="ah-empty ah-empty--center">This conversation has no messages.</p> : null}
+          {!c.entries.length && !pending ? <p className="ah-empty ah-empty--center">This conversation has no messages.</p> : null}
+          {pending ? <PendingMessage run={run} /> : null}
+          {failed ? <RunError run={failed} onDismiss={() => onDismissRun?.(failed.id)} /> : null}
         </div>
+      </div>
+      <div className="ah-view__composer">
+        <Composer
+          key={`${c.harness}:${c.id}`}
+          harness={c.harness}
+          cwd={c.cwd || c.projectPath}
+          session={c.id}
+          turns={c.turns}
+          run={running ? run : null}
+          disabledReason={composerBlocked(c, running)}
+          onSent={onSent}
+          onOpenSettings={onOpenSettings}
+        />
       </div>
     </div>
   )
