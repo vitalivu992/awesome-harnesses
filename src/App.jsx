@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react"
 import { BrowserRouter, Route, Routes, useSearchParams } from "react-router"
 import {
   LOGGED_OUT_EVENT,
-  fetchConversation,
   fetchConversations,
   fetchProjects,
   fetchSession,
@@ -10,6 +9,7 @@ import {
 } from "./lib/api.js"
 import { readPrefs, writePref } from "./lib/prefs.js"
 import { useFetch } from "./hooks/useFetch.js"
+import { useLiveConversation } from "./hooks/useLiveConversation.js"
 import { ProjectsPanel } from "./components/ProjectsPanel.jsx"
 import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
@@ -42,9 +42,7 @@ function Browser({ user, onLogout }) {
     enabled: Boolean(projectKey),
   })
   const [harness, id] = splitConversationKey(convKey)
-  const conversation = useFetch((signal) => fetchConversation(harness, id, { signal }), [harness, id], {
-    enabled: Boolean(harness && id),
-  })
+  const conversation = useLiveConversation(harness, id)
 
   // Open the most recently active project when none is selected.
   useEffect(() => {

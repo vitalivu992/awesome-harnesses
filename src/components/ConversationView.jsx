@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react"
+import { useEffect, useLayoutEffect, useRef, useState } from "react"
 import { agentLabel, clockTime, duration, longDateTime, plural, statusMeta } from "../lib/format.js"
+import { atBottom, isWorking } from "../lib/live.js"
 import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
 import { Markdown } from "./Markdown.jsx"
 import { ResumeButton } from "./ResumeButton.jsx"
@@ -43,13 +44,14 @@ function UserMessage({ entry }) {
   )
 }
 
-function AssistantMessage({ entry, harness, index, expandAll }) {
+/** `live`: the turn the agent is still working on. */
+function AssistantMessage({ entry, harness, index, expandAll, live }) {
   const [open, setOpen] = useState(expandAll)
   useEffect(() => setOpen(expandAll), [expandAll])
   const steps = entry.steps || []
   const took = duration(entry.promptAt, entry.endedAt)
   const status = entry.status || "done"
-  if (!steps.length && !entry.final && status === "done") return null
+  if (!steps.length && !entry.final && status === "done" && !live) return null
   return (
     <div className="ah-msg ah-msg--agent" data-turn={index}>
       <div className="ah-avatar" aria-hidden="true">
@@ -68,7 +70,7 @@ function AssistantMessage({ entry, harness, index, expandAll }) {
           <div className={`ah-work${open ? " is-open" : ""}`}>
             <button type="button" className="ah-work__toggle" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
               <i className={`fa-solid fa-chevron-right ah-work__chev${open ? " is-open" : ""}`} aria-hidden="true"></i>
-              <span>{took ? `Worked for ${took}` : "Work details"}</span>
+              <span>{live ? (took ? `Working for ${took}` : "Working") : took ? `Worked for ${took}` : "Work details"}</span>
               <span className="ah-work__summary">{workSummary(steps)}</span>
             </button>
             {open ? (
@@ -85,7 +87,11 @@ function AssistantMessage({ entry, harness, index, expandAll }) {
             <Markdown docId={`turn-${index}`}>{entry.final}</Markdown>
           </div>
         ) : null}
-        {status !== "done" ? (
+        {live ? (
+          <p className="ah-turn-status ah-turn-status--live">
+            <i className="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> Working…
+          </p>
+        ) : status !== "done" ? (
           <p className={`ah-turn-status ah-turn-status--${status}`}>
             <StatusIcon status={status} /> {statusMeta(status).label}
             {entry.error ? <span className="ah-turn-status__error">: {entry.error}</span> : null}
@@ -117,7 +123,7 @@ function EventRow({ entry }) {
   )
 }
 
-function Header({ conversation, expandAll, onExpandAll }) {
+function Header({ conversation, working, expandAll, onExpandAll }) {
   const c = conversation
   const models = (c.models || []).length ? c.models : [""]
   return (
@@ -132,6 +138,11 @@ function Header({ conversation, expandAll, onExpandAll }) {
               <HarnessIcon harness={c.harness} size={12} /> {agentLabel(c.harness, m)}
             </span>
           ))}
+          {c.active ? (
+            <span className="ah-chip ah-chip--live" title="Updates as the session writes to its transcript">
+              <i className="fa-solid fa-tower-broadcast" aria-hidden="true"></i> {working ? "Working" : "Live"}
+            </span>
+          ) : null}
           <ClientBadge conversation={c} />
           {c.gitBranch ? (
             <span className="ah-chip" title="Git branch">
@@ -167,10 +178,28 @@ function Header({ conversation, expandAll, onExpandAll }) {
   )
 }
 
-/** Main column: the conversation as a chat, work details collapsed by default. */
+/**
+ * Main column: the conversation as a chat, work details collapsed by default.
+ * While the agent is working the work is shown, and the chat follows new
+ * messages when it is scrolled to the bottom; once the turn ends the work
+ * collapses and the final answer is left.
+ */
 export function ConversationView({ conversation, loading, error }) {
-  const [expandAll, setExpandAll] = useState(false)
-  useEffect(() => setExpandAll(false), [conversation?.id])
+  const working = isWorking(conversation)
+  const [expandAll, setExpandAll] = useState(working)
+  useEffect(() => setExpandAll(working), [conversation?.id, working])
+
+  const scrollRef = useRef(null)
+  const follow = useRef(false)
+  const shownId = useRef("")
+  useLayoutEffect(() => {
+    const el = scrollRef.current
+    if (!el || !conversation) return
+    const opened = shownId.current !== conversation.id
+    shownId.current = conversation.id
+    if ((opened && working) || (!opened && follow.current)) el.scrollTop = el.scrollHeight
+    follow.current = atBottom(el)
+  }, [conversation, working, expandAll])
 
   if (error) return <div className="ah-view ah-view--empty"><p className="ah-error">Could not load the conversation: {error.message}</p></div>
   if (!conversation) {
@@ -185,8 +214,8 @@ export function ConversationView({ conversation, loading, error }) {
   const c = conversation
   return (
     <div className="ah-view" aria-busy={loading || undefined}>
-      <Header conversation={c} expandAll={expandAll} onExpandAll={setExpandAll} />
-      <div className="ah-view__scroll" id="ahChat">
+      <Header conversation={c} working={working} expandAll={expandAll} onExpandAll={setExpandAll} />
+      <div className="ah-view__scroll" id="ahChat" ref={scrollRef} onScroll={(e) => (follow.current = atBottom(e.currentTarget))}>
         <div className="ah-chat">
           {c.entries.map((entry, i) =>
             entry.kind === "event" ? (
@@ -194,7 +223,13 @@ export function ConversationView({ conversation, loading, error }) {
             ) : (
               <div key={i} className="ah-turn">
                 <UserMessage entry={entry} />
-                <AssistantMessage entry={entry} harness={c.harness} index={i} expandAll={expandAll} />
+                <AssistantMessage
+                  entry={entry}
+                  harness={c.harness}
+                  index={i}
+                  expandAll={expandAll}
+                  live={working && i === c.entries.length - 1}
+                />
               </div>
             )
           )}

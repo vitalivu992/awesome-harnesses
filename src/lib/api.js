@@ -4,10 +4,14 @@
 // tab, server restarted), so the app goes back to the login screen.
 export const LOGGED_OUT_EVENT = "ah:logged-out"
 
-async function request(url, { signal, method = "GET", body } = {}) {
+// `etag` sends If-None-Match: a 304 answer resolves to null. `meta.etag` receives the answer's ETag.
+async function request(url, { signal, method = "GET", body, etag, meta } = {}) {
   const headers = { Accept: "application/json" }
   if (body !== undefined) headers["Content-Type"] = "application/json"
+  if (etag) headers["If-None-Match"] = etag
   const res = await fetch(url, { signal, method, headers, body: body === undefined ? undefined : JSON.stringify(body) })
+  if (meta) meta.etag = res.headers.get("ETag") || ""
+  if (res.status === 304) return null
   let data = null
   try {
     data = await res.json()
@@ -59,8 +63,15 @@ export async function fetchConversations(projectKey, opts) {
   return (await getJSON(`/api/conversations?${q}`, opts)).conversations || []
 }
 
-export async function fetchConversation(harness, id, opts) {
-  return getJSON(`/api/conversations/${encodeURIComponent(harness)}/${encodeURIComponent(id)}`, opts)
+/** `{ conversation, etag }`; conversation is null when it hasn't changed since `etag`. */
+export async function fetchConversation(harness, id, { signal, etag } = {}) {
+  const meta = {}
+  const conversation = await getJSON(`/api/conversations/${encodeURIComponent(harness)}/${encodeURIComponent(id)}`, {
+    signal,
+    etag,
+    meta,
+  })
+  return { conversation, etag: meta.etag }
 }
 
 // The terminal panel's shells (internal/shell); each terminal streams over a WebSocket.
