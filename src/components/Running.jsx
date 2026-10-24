@@ -5,8 +5,8 @@ import { nextWorkingWord } from "../lib/live.js"
  * Windows 11's indeterminate progress bar, laid on the bottom edge of its
  * positioned parent (the view header): the agent is at work there.
  */
-export function RunningBar({ className = "" }) {
-  return <span className={`ah-progress ${className}`.trim()} aria-hidden="true"></span>
+export function RunningBar() {
+  return <span className="ah-progress" aria-hidden="true"></span>
 }
 
 /** "Pondering…", "Brewing…": a new word every `every` ms while the agent works. */

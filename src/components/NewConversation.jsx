@@ -51,7 +51,7 @@ export function NewConversation({ project, harness, onHarnessChange, onStarted, 
             Cancel
           </button>
         </div>
-        {waiting ? <RunningBar className="ah-progress--edge" /> : null}
+        {waiting ? <RunningBar /> : null}
       </header>
       <div className="ah-new__body">
         <div className="ah-new__intro">

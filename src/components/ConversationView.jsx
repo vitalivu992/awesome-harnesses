@@ -210,7 +210,7 @@ function Header({ conversation, working, expandAll, onExpandAll }) {
         </button>
         <ResumeButton conversation={c} />
       </div>
-      {working ? <RunningBar className="ah-progress--edge" /> : null}
+      {working ? <RunningBar /> : null}
     </header>
   )
 }
