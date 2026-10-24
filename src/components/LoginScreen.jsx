@@ -6,8 +6,10 @@ import { HarnessIcon } from "./HarnessIcon.jsx"
 
 // Length of the unlock sequence in app.css (wipe, welcome, aperture).
 const UNLOCK_MS = 2400
+// Length of the lock-in after a logout (blur, backdrop, card).
+export const LOCK_MS = 900
 
-function prefersReducedMotion() {
+export function prefersReducedMotion() {
   try {
     return matchMedia("(prefers-reduced-motion: reduce)").matches
   } catch {
@@ -20,9 +22,11 @@ function prefersReducedMotion() {
  * (the server checks the password with PAM). Once `unlockedAs` is set it plays
  * the unlock sequence over the app — the redaction bars peel away, a welcome
  * line writes in, an aperture opens onto the app — and calls `onDone` at the
- * end, or as soon as the user clicks or presses a key.
+ * end, or as soon as the user clicks or presses a key. With `locking` (a logout
+ * in progress) it comes in over the app instead: the app blurs behind it, the
+ * backdrop and then the form fade in (LOCK_MS).
  */
-export function LoginScreen({ unlockedAs = null, onLogin, onDone }) {
+export function LoginScreen({ unlockedAs = null, locking = false, onLogin, onDone }) {
   const rows = useMemo(() => redactionRows(), [])
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
@@ -66,7 +70,7 @@ export function LoginScreen({ unlockedAs = null, onLogin, onDone }) {
 
   return (
     <div
-      className={`ah-login${unlocking ? " is-unlocking" : ""}`}
+      className={`ah-login${unlocking ? " is-unlocking" : ""}${locking ? " is-locking" : ""}`}
       id="ahLogin"
       onClick={unlocking ? onDone : undefined}
     >

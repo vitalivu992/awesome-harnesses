@@ -29,7 +29,7 @@ test("logs in with an unlock sequence, then logs out", async ({ page }) => {
   await expect(page.locator("#ahProjects")).toContainText("demo_app")
   await expect(page.locator("#ahLogin")).toHaveCount(0)
 
-  // Log out from the account menu, after a confirmation.
+  // Log out from the account menu, after a confirmation; the login screen comes in over the app.
   await page.locator("#ahUserMenu").click()
   await page.locator("#ahLogout").click()
   await expect(page.locator("#ahLogoutDialog")).toBeVisible()
@@ -39,7 +39,9 @@ test("logs in with an unlock sequence, then logs out", async ({ page }) => {
   await page.locator("#ahUserMenu").click()
   await page.locator("#ahLogout").click()
   await page.locator("#ahLogoutConfirm").click()
-  await expect(page.locator("#ahLogin")).toBeVisible()
+  await expect(page.locator("#ahLogin")).toHaveClass(/is-locking/)
+  await expect(page.locator("#ahProjects")).toHaveCount(0)
+  await expect(page.locator("#ahLogin")).not.toHaveClass(/is-locking/)
   expect((await page.request.get("/api/projects")).status()).toBe(401)
 })
 

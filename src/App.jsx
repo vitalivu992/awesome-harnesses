@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { BrowserRouter, Route, Routes, useSearchParams } from "react-router"
 import {
   LOGGED_OUT_EVENT,
@@ -13,7 +13,7 @@ import { useLiveConversation } from "./hooks/useLiveConversation.js"
 import { ProjectsPanel, isMissing } from "./components/ProjectsPanel.jsx"
 import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
-import { LoginScreen } from "./components/LoginScreen.jsx"
+import { LOCK_MS, LoginScreen, prefersReducedMotion } from "./components/LoginScreen.jsx"
 import { ShellPanel, ShellProvider, useShells } from "./components/Shells.jsx"
 
 /** "claude:<id>" → ["claude", "<id>"]. */
@@ -109,12 +109,17 @@ function Browser({ user, onLogout }) {
 /**
  * The login gate: the browser only mounts with a session. Right after a login
  * it mounts under the login screen, which plays its unlock sequence on top
- * while the projects load.
+ * while the projects load. A logout runs the other way: the login screen
+ * comes in over the still-mounted browser, which unmounts once the session is
+ * gone and the screen is opaque.
  */
 function AuthGate() {
   // undefined: still asking the server; null: logged out.
   const [user, setUser] = useState(undefined)
   const [unlocking, setUnlocking] = useState(false)
+  const [locking, setLocking] = useState(false)
+  // While locking, the 401s of the browser's last requests don't cut the sequence short.
+  const lockingRef = useRef(false)
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -122,7 +127,7 @@ function AuthGate() {
       (u) => setUser(u),
       () => !ctrl.signal.aborted && setUser(null)
     )
-    const loggedOut = () => setUser(null)
+    const loggedOut = () => !lockingRef.current && setUser(null)
     window.addEventListener(LOGGED_OUT_EVENT, loggedOut)
     return () => {
       ctrl.abort()
@@ -140,10 +145,16 @@ function AuthGate() {
   }, [])
   const onUnlocked = useCallback(() => setUnlocking(false), [])
   const onLogout = useCallback(async () => {
+    lockingRef.current = true
+    setUnlocking(false)
+    setLocking(true)
+    const shown = new Promise((resolve) => setTimeout(resolve, prefersReducedMotion() ? 300 : LOCK_MS))
     try {
       await logout()
     } finally {
-      setUnlocking(false)
+      await shown
+      lockingRef.current = false
+      setLocking(false)
       setUser(null)
     }
   }, [])
@@ -156,7 +167,9 @@ function AuthGate() {
           <Browser user={user} onLogout={onLogout} />
         </ShellProvider>
       ) : null}
-      {!user || unlocking ? <LoginScreen unlockedAs={user} onLogin={onLogin} onDone={onUnlocked} /> : null}
+      {!user || unlocking || locking ? (
+        <LoginScreen unlockedAs={unlocking ? user : null} locking={locking} onLogin={onLogin} onDone={onUnlocked} />
+      ) : null}
     </>
   )
 }
