@@ -1,6 +1,6 @@
 // Command server serves the Awesome Harnesses UI and its read-only API over
 // the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo),
-// and the terminal panel's shells.
+// the terminal panel's shells, and the runs that send prompts to the harness CLIs.
 package main
 
 import (
@@ -18,14 +18,16 @@ import (
 	"awesome-harness/internal/api"
 	"awesome-harness/internal/auth"
 	"awesome-harness/internal/catalog"
+	"awesome-harness/internal/launch"
+	"awesome-harness/internal/runs"
 	"awesome-harness/internal/shell"
 	"awesome-harness/web"
 )
 
 // serverVars are the settings this server reads (often from .env via the
-// systemd unit); the shells it starts don't inherit them.
+// systemd unit); the shells and harness CLIs it starts don't inherit them.
 var serverVars = []string{"HOST", "PORT", "PAM_SERVICE", "AUTH_DISABLED", "CLAUDE_DIR", "CURSOR_DIR",
-	"CURSOR_LOGS_DIR", "CODEX_DIR", "PI_DIR", "OPENCODE_DB", "KILO_DB"}
+	"CURSOR_LOGS_DIR", "CODEX_DIR", "PI_DIR", "OPENCODE_DB", "KILO_DB", "LAUNCH_PATH"}
 
 func env(name, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(name)); v != "" {
@@ -66,10 +68,18 @@ func main() {
 	shells := &shell.Manager{Env: shellEnv()}
 	login.OnLogout = shells.StopAll
 
+	// Prompts sent from the browser run the harness CLIs headless. LAUNCH_PATH
+	// is where they are looked up; by default the login shell's PATH.
+	cat := catalog.New(cfg)
+	dirs := launch.DefaultDirs()
+	dirs.Claude, dirs.Cursor, dirs.Codex, dirs.Pi = cfg.ClaudeDir, cfg.CursorDir, cfg.CodexDir, cfg.PiDir
+	prompts := &runs.Manager{Catalog: cat, Dirs: dirs, Env: shellEnv(), Path: env("LAUNCH_PATH", "")}
+
 	mux := http.NewServeMux()
 	login.Register(mux)
-	(&api.Handler{Catalog: catalog.New(cfg)}).Register(mux)
+	(&api.Handler{Catalog: cat}).Register(mux)
 	shells.Register(mux)
+	prompts.Register(mux)
 	// The single-page app: bundle files, else index.html for client routes.
 	// It 404s /health and /api/* paths no pattern above matched.
 	mux.Handle("/", web.Handler(web.Dist))
