@@ -39,10 +39,12 @@ test.afterEach(() => rmSync(FILE, { force: true }))
 test("follows a working session and collapses its work when it ends", async ({ page }) => {
   await page.goto(`/?project=${encodeURIComponent(LIVE)}&c=claude:${ID}`)
   const chat = page.locator("#ahChat")
-  // Working: the work is shown and the turn says so.
+  // Working: the work is shown, no Live chip or status icon in the title (the header's progress
+  // bar says it), and a working word ("Pondering…") under the answer.
   await expect(page.locator("#ahExpandAll")).toHaveText(/Hide work/)
-  await expect(page.locator(".ah-chip--live")).toHaveText(/Working/)
-  await expect(chat.locator(".ah-turn-status--live")).toHaveText(/Working…/)
+  await expect(page.locator(".ah-chip--live")).toHaveCount(0)
+  await expect(page.locator(".ah-view__title .ah-status")).toHaveCount(0)
+  await expect(chat.locator(".ah-turn-status--live .ah-working-word")).toHaveText(/^[A-Z][a-z]+…$/)
   await expect(chat.locator(".ah-step-row")).toHaveCount(1)
   // The header carries the progress bar; the project and the conversation the working icon.
   await expect(page.locator(".ah-view__head .ah-progress")).toHaveCount(1)
@@ -50,6 +52,7 @@ test("follows a working session and collapses its work when it ends", async ({ p
   const convRow = page.locator(`.ah-conv[data-conversation="claude:${ID}"]`)
   await expect(projectRow).toHaveClass(/is-running/)
   await expect(projectRow.locator(".ah-live--running")).toHaveAttribute("aria-label", "1 working")
+  await expect(projectRow.locator(".ah-live--running > i")).toHaveClass(/fa-circle-dot/)
   await expect(convRow).toHaveClass(/is-running/)
   await expect(convRow.locator(".ah-live--running")).toHaveCount(1)
   await expect(page.locator(".ah-progress")).toHaveCount(1)

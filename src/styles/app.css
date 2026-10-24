@@ -988,7 +988,7 @@ body {
 
 .ah-live--running > i,
 .ah-rail__live.ah-live--running {
-  animation: ah-pulse 1.6s ease-in-out infinite;
+  animation: ah-pulse 1.2s ease-in-out infinite;
 }
 
 .ah-live--finished {

@@ -24,12 +24,12 @@ export function WorkingWord({ every = 3000 }) {
 }
 
 const LIVE = {
-  running: { icon: "fa-tower-broadcast", label: "Working" },
+  running: { icon: "fa-circle-dot", label: "Working" },
   finished: { icon: "fa-circle-check", label: "Finished" },
 }
 
 /**
- * A list row's live mark (`lib/live.js` `liveState`): a pulsing broadcast icon while
+ * A list row's live mark (`lib/live.js` `liveState`): a flashing blue dot while
  * the agent works, a check once it has just finished. `count` > 1 is shown beside it.
  */
 export function LiveIcon({ state, count = 0, title = "" }) {
