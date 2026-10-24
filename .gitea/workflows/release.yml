@@ -1,0 +1,181 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  GOTOOLCHAIN: local
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-amd64
+            runs-on: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            cgo: "1"
+          - id: linux-arm64
+            runs-on: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            cgo: "1"
+            cross: aarch64-linux-gnu-
+          - id: windows-amd64
+            runs-on: ubuntu-latest
+            goos: windows
+            goarch: amd64
+            cgo: "0"
+          - id: darwin-amd64
+            runs-on: macbuntu
+            goos: darwin
+            goarch: amd64
+            cgo: "1"
+          - id: darwin-arm64
+            runs-on: macbuntu
+            goos: darwin
+            goarch: arm64
+            cgo: "1"
+
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Linux build deps
+        if: matrix.goos == 'linux' && matrix.runs-on == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev
+          if [ "${{ matrix.goarch }}" = arm64 ]; then
+            sudo dpkg --add-architecture arm64
+            sudo apt-get update
+            sudo apt-get install -y gcc-aarch64-linux-gnu libpam0g-dev:arm64
+          fi
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web bundle
+        run: pnpm build
+
+      - name: Build and package
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+          CC: ${{ matrix.cross }}gcc
+          CXX: ${{ matrix.cross }}g++
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          base="awesome-harness-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = windows ]; then
+            out="dist/${base}.exe"
+          else
+            out="dist/${base}"
+          fi
+          go build -trimpath -ldflags "-s -w" -o "$out" ./cmd/server
+          tar czf "dist/${base}.tar.gz" -C dist "$(basename "$out")"
+          ls -l dist
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: pkg-${{ matrix.id }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: pkg-*
+          merge-multiple: true
+
+      - name: SHA256SUMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum awesome-harness-*.tar.gz > SHA256SUMS)
+          ls -l dist
+
+      - name: Publish release assets
+        shell: bash
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${RELEASE_TOKEN:-}" ]; then
+            echo "RELEASE_TOKEN secret is not set — cannot publish release assets." >&2
+            exit 1
+          fi
+          api="${GITHUB_SERVER_URL%/}/api/v1/repos/${GITHUB_REPOSITORY}"
+          auth=(-H "Authorization: token ${RELEASE_TOKEN}" -H "User-Agent: awesome-harness-release/1.0")
+          body="{\"tag_name\":\"${GITHUB_REF_NAME}\",\"name\":\"${GITHUB_REF_NAME}\",\"draft\":false,\"prerelease\":false}"
+
+          release_id="$(curl -fsSL "${auth[@]}" -X POST "${api}/releases" \
+            -H "Content-Type: application/json" -d "${body}" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])' 2>/dev/null || true)"
+          if [ -z "${release_id}" ]; then
+            release_id="$(curl -fsSL "${auth[@]}" \
+              "${api}/releases/tags/${GITHUB_REF_NAME}" \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["id"])')"
+          fi
+          echo "release id: ${release_id}"
+
+          for f in dist/awesome-harness-*.tar.gz dist/SHA256SUMS; do
+            [ -f "$f" ] || continue
+            file="$(basename "$f")"
+            old_id="$(curl -fsSL "${auth[@]}" "${api}/releases/tags/${GITHUB_REF_NAME}" \
+              | python3 -c 'import json,sys; print({a["name"]: a["id"] for a in json.load(sys.stdin).get("assets",[])}.get(sys.argv[1],""))' "$file" 2>/dev/null || true)"
+            if [ -n "${old_id}" ]; then
+              curl -fsSL "${auth[@]}" -X DELETE "${api}/releases/assets/${old_id}" >/dev/null || true
+              echo "replaced existing ${file}"
+            fi
+            curl -fsSL "${auth[@]}" -X POST \
+              -F "attachment=@${f}" \
+              "${api}/releases/${release_id}/assets?name=${file}" >/dev/null
+            echo "uploaded ${file}"
+          done
+
+      - name: Verify asset download URLs
+        shell: bash
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -euo pipefail
+          api="${GITHUB_SERVER_URL%/}/api/v1/repos/${GITHUB_REPOSITORY}"
+          mapfile -t urls < <(curl -fsSL -H "Authorization: token ${RELEASE_TOKEN}" -H "User-Agent: awesome-harness-release/1.0" \
+            "${api}/releases/tags/${GITHUB_REF_NAME}" \
+            | python3 -c 'import json,sys; [print(a["browser_download_url"]) for a in json.load(sys.stdin)["assets"]]')
+          if [ "${#urls[@]}" -lt 5 ]; then
+            echo "expected at least 5 release assets, found ${#urls[@]}" >&2
+            exit 1
+          fi
+          for u in "${urls[@]}"; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' -L -H "Authorization: token ${RELEASE_TOKEN}" -H "User-Agent: awesome-harness-release/1.0" "$u")"
+            echo "$u -> $code"
+            if [ "$code" != "200" ]; then
+              echo "asset not servable: $u" >&2
+              exit 1
+            fi
+          done
