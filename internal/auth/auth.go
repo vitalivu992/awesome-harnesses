@@ -36,6 +36,9 @@ type Authenticator func(user, password string) error
 // Handler serves the auth routes and guards the rest of the API.
 type Handler struct {
 	Auth Authenticator
+	// NoLogin, when set, turns the login off: every request counts as this
+	// user's session (AUTH_DISABLED, for local testing and agents).
+	NoLogin string
 
 	mu       sync.Mutex
 	sessions map[[32]byte]string // user by sha256 of the cookie value
@@ -156,6 +159,9 @@ func (h *Handler) logout(w http.ResponseWriter, r *http.Request) {
 
 // user returns the logged-in user of r's session cookie.
 func (h *Handler) user(r *http.Request) (string, bool) {
+	if h.NoLogin != "" {
+		return h.NoLogin, true
+	}
 	c, err := r.Cookie(CookieName)
 	if err != nil || c.Value == "" {
 		return "", false

@@ -104,10 +104,16 @@ func Parse(r io.Reader) (*conv.Conversation, error) {
 				closeTurn(status, errText)
 			case l.Role == "user" && l.Message != nil:
 				prompt, at := userPrompt(l.Message.Content)
-				closeTurn(conv.StatusIncomplete, "")
 				if c.StartedAt == "" && at != "" {
 					c.StartedAt = at
 				}
+				// Only context blocks Cursor injects (a subagent catalog, a bare
+				// <timestamp>, often several after a turn ends): not a prompt, so
+				// no new turn — a running one goes on.
+				if prompt == "" {
+					break
+				}
+				closeTurn(conv.StatusIncomplete, "")
 				c.Entries = append(c.Entries, conv.Entry{Kind: conv.EntryTurn, Prompt: prompt, PromptAt: at})
 				cur = len(c.Entries) - 1
 			case l.Role == "assistant" && l.Message != nil:

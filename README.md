@@ -40,6 +40,7 @@ Building:
 | `HOST` | `127.0.0.1` | Transcripts hold code, prompts and secrets: keep it on loopback. |
 | `PORT` | `8767` | |
 | `PAM_SERVICE` | `login` | Linux, macOS: PAM service that checks the password (`/etc/pam.d/<name>`). |
+| `AUTH_DISABLED` | off | `1` turns the login off (local testing, agents driving a browser). |
 | `CLAUDE_DIR` | `~/.claude` | |
 | `CURSOR_DIR` | `~/.cursor` | |
 | `CURSOR_LOGS_DIR` | `~/.cursor-server/data/logs` | Cursor server logs: model and turn times of Cursor app chats. |

@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/user"
+	"strconv"
 	"strings"
 	"time"
 
@@ -42,6 +44,15 @@ func main() {
 		log.Fatal(err)
 	}
 	login := &auth.Handler{Auth: authenticate}
+	// AUTH_DISABLED=1 drops the login (local testing, agents driving a browser).
+	if off, _ := strconv.ParseBool(env("AUTH_DISABLED", "false")); off {
+		u, err := user.Current()
+		if err != nil {
+			log.Fatal(err)
+		}
+		login.NoLogin = u.Username
+		log.Printf("warning: AUTH_DISABLED is set — no login, anyone who reaches the port reads the transcripts as %s", u.Username)
+	}
 
 	mux := http.NewServeMux()
 	login.Register(mux)

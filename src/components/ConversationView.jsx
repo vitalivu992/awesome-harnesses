@@ -21,8 +21,8 @@ export function workSummary(steps) {
 
 function UserMessage({ entry }) {
   const [open, setOpen] = useState(false)
-  const long = entry.prompt.length > 1200 || entry.prompt.split("\n").length > 18
   if (!entry.prompt) return null
+  const long = entry.prompt.length > 1200 || entry.prompt.split("\n").length > 18
   return (
     <div className="ah-msg ah-msg--user">
       <div className="ah-msg__meta">

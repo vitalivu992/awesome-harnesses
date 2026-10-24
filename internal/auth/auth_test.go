@@ -106,3 +106,19 @@ func TestLoginNeedsJSON(t *testing.T) {
 		t.Fatalf("form post: %d", res.StatusCode)
 	}
 }
+
+func TestNoLogin(t *testing.T) {
+	h := &Handler{NoLogin: "me", Auth: func(string, string) error { return ErrDenied }}
+	mux := http.NewServeMux()
+	h.Register(mux)
+	mux.HandleFunc("GET /api/projects", func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(`{"projects":[]}`)) })
+	srv := httptest.NewServer(h.Guard(mux))
+	t.Cleanup(srv.Close)
+
+	if res := do(t, "GET", srv.URL+"/api/projects", "", ""); res.StatusCode != http.StatusOK {
+		t.Fatalf("api without login: %d", res.StatusCode)
+	}
+	if res := do(t, "GET", srv.URL+"/api/auth/session", "", ""); res.StatusCode != http.StatusOK {
+		t.Fatalf("session without login: %d", res.StatusCode)
+	}
+}

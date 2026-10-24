@@ -40,7 +40,8 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   the last `stop_reason` (`end_turn` → done, else incomplete).
 - `internal/cursor` — Cursor agent transcripts (no model, no tool output, no per-line times).
   The prompt is the `<user_query>` (else the text minus leading `<tag>…</tag>` context blocks);
-  trailing `[REDACTED]` is dropped. `turn_ended` gives the status (abort errors → aborted);
+  trailing `[REDACTED]` is dropped. A user line with only context blocks (subagent catalog, a
+  bare `<timestamp>`) is not a prompt and starts no turn. `turn_ended` gives the status (abort errors → aborted);
   transcripts from before mid-2026 have no markers, so a turn with a final answer counts as done.
   `store.go` reads the cursor-agent chat store (hex JSON meta + newest `"modelName"` in blobs) and
   the AI code tracking db, both opened `mode=ro&immutable=1` so Cursor's locks are never touched.
@@ -88,7 +89,8 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   default `login`; only the server's user, compared after PAM so timing is the same) and
   `logon_windows.go` (`LogonUserW` network logon via advapi32, same account compared by SID,
   2 s delay on failure). `system_e2e.go` (build tag `e2e`) replaces both with
-  demo / demo-password for Playwright.
+  demo / demo-password for Playwright. `AUTH_DISABLED=1` (`Handler.NoLogin`) turns the login off:
+  every request is the server's user — for agents driving a browser against the running service.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
   `GET /api/conversations/{harness}/{id}`. `cmd/server` adds gzip for `/api/*` and an access log,
   and listens on `HOST` (default `127.0.0.1`).

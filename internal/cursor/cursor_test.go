@@ -1,6 +1,7 @@
 package cursor
 
 import (
+	"strings"
 	"testing"
 
 	"awesome-harness/internal/conv"
@@ -66,5 +67,32 @@ func TestStripContext(t *testing.T) {
 	in := "<external_links>\n<a>x</a>\n</external_links>\n<attached_files>f</attached_files>\nhello <b>there</b>"
 	if got := stripContext(in); got != "hello <b>there</b>" {
 		t.Fatalf("stripContext = %q", got)
+	}
+}
+
+func TestContextOnlyUserLineContinuesTurn(t *testing.T) {
+	in := `{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Friday, Oct 23, 2026, 3:06 PM (UTC+7)</timestamp>\n<user_query>\nrun the sim\n</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Shell","input":{"command":"make sim"}}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<available_subagent_types>\n- explore: search\n</available_subagent_types>"}]}}
+{"role":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"path":"a"}}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"The sim runs."}]}}
+{"type":"turn_ended","status":"success"}
+{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Friday, Oct 23, 2026, 3:40 PM (UTC+7)</timestamp>"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Friday, Oct 23, 2026, 3:40 PM (UTC+7)</timestamp>"}]}}
+{"role":"user","message":{"content":[{"type":"text","text":"<timestamp>Friday, Oct 23, 2026, 3:40 PM (UTC+7)</timestamp>\n<user_query>next</user_query>"}]}}
+{"role":"assistant","message":{"content":[{"type":"text","text":"Ok."}]}}
+`
+	c, err := Parse(strings.NewReader(in))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(c.Entries) != 2 {
+		t.Fatalf("entries = %+v (a user line with only context blocks must not start a turn)", c.Entries)
+	}
+	if first := c.Entries[0]; first.Prompt != "run the sim" || len(first.Steps) != 2 || first.Final != "The sim runs." || first.Status != conv.StatusDone {
+		t.Fatalf("first = %+v", first)
+	}
+	if second := c.Entries[1]; second.Prompt != "next" || second.Final != "Ok." {
+		t.Fatalf("second = %+v", second)
 	}
 }
