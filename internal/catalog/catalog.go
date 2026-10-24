@@ -8,6 +8,7 @@ package catalog
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -267,29 +268,44 @@ var idRe = regexp.MustCompile(`^[A-Za-z0-9._-]{1,128}$`)
 
 // Conversation reads one conversation in full.
 func (c *Catalog) Conversation(harness, id string) (*conv.Conversation, error) {
+	full, _, err := c.ConversationIfChanged(harness, id, "")
+	return full, err
+}
+
+// ConversationIfChanged is Conversation for a view that polls a live session.
+// It also returns the conversation's version, which changes when the
+// transcript (or database row) changes or the active flag flips; when that
+// version is still `known`, the conversation is nil and nothing is parsed.
+func (c *Catalog) ConversationIfChanged(harness, id, known string) (*conv.Conversation, string, error) {
 	if !idRe.MatchString(id) || strings.Contains(id, "..") {
-		return nil, ErrNotFound
+		return nil, "", ErrNotFound
 	}
 	for _, it := range c.items() {
 		if it.harness != harness || it.id != id {
 			continue
 		}
+		version := fmt.Sprintf("%d-%d-%t", it.size, it.mtime.UnixNano(), c.active(it))
+		if version == known {
+			return nil, version, nil
+		}
 		full, err := c.parse(it)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		full.ProjectPath = projectPathOf(it.key)
 		c.enrich(&full.Summary, full, it)
-		return full, nil
+		return full, version, nil
 	}
-	return nil, ErrNotFound
+	return nil, "", ErrNotFound
 }
+
+func (c *Catalog) active(it item) bool { return c.now().Sub(it.mtime) < c.cfg.ActiveWindow }
 
 // enrich adds what isn't in the conversation itself: the active flag, the
 // project directory as cwd when the harness doesn't record one, and the
 // harness-specific extras (Cursor model / resumability, Codex thread names).
 func (c *Catalog) enrich(s *conv.Summary, full *conv.Conversation, it item) {
-	s.Active = c.now().Sub(it.mtime) < c.cfg.ActiveWindow
+	s.Active = c.active(it)
 	if s.Cwd == "" {
 		s.Cwd = s.ProjectPath
 	}

@@ -2,7 +2,7 @@
 //
 //	GET /api/projects                         every project, newest activity first
 //	GET /api/conversations?project=<key>      one project's conversation summaries
-//	GET /api/conversations/{harness}/{id}     one conversation in full
+//	GET /api/conversations/{harness}/{id}     one conversation in full (ETag / 304)
 package api
 
 import (
@@ -10,6 +10,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strings"
 
 	"awesome-harness/internal/catalog"
 )
@@ -47,10 +48,19 @@ func (h *Handler) conversations(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"conversations": sums})
 }
 
+// conversation answers 304 when If-None-Match is still the conversation's
+// version, so the view of a live session can poll it every few seconds.
 func (h *Handler) conversation(w http.ResponseWriter, r *http.Request) {
-	c, err := h.Catalog.Conversation(r.PathValue("harness"), r.PathValue("id"))
+	known := strings.Trim(strings.TrimPrefix(r.Header.Get("If-None-Match"), "W/"), `"`)
+	c, version, err := h.Catalog.ConversationIfChanged(r.PathValue("harness"), r.PathValue("id"), known)
 	if err != nil {
 		writeCatalogError(w, err)
+		return
+	}
+	w.Header().Set("ETag", `"`+version+`"`)
+	if c == nil {
+		w.Header().Set("Cache-Control", "no-store")
+		w.WriteHeader(http.StatusNotModified)
 		return
 	}
 	writeJSON(w, http.StatusOK, c)

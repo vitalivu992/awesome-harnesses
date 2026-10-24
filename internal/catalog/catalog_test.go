@@ -241,3 +241,34 @@ func TestSlugs(t *testing.T) {
 		t.Fatalf("guessSlug = %q", got)
 	}
 }
+
+func TestConversationIfChanged(t *testing.T) {
+	c, project := setup(t)
+	path := filepath.Join(filepath.Dir(filepath.Dir(project)), ".claude", "projects", "-"+looseSlug(project), "c1.jsonl")
+	full, v1, err := c.ConversationIfChanged(conv.Claude, "c1", "")
+	if err != nil || full == nil || v1 == "" {
+		t.Fatalf("first read = %v, %q, %v", full, v1, err)
+	}
+	if full, v, err := c.ConversationIfChanged(conv.Claude, "c1", v1); err != nil || full != nil || v != v1 {
+		t.Fatalf("unchanged = %v, %q, %v; want nil, %q", full, v, err, v1)
+	}
+
+	// A live session appends a turn: a new version and the new entry.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Fprintf(f, `{"type":"user","cwd":%q,"timestamp":"2026-10-20T10:01:00Z","message":{"role":"user","content":"more"}}`+"\n", project)
+	f.Close()
+	full, v2, err := c.ConversationIfChanged(conv.Claude, "c1", v1)
+	if err != nil || full == nil || v2 == v1 || full.Turns != 2 || !full.Active {
+		t.Fatalf("after append = %+v, %q, %v", full, v2, err)
+	}
+
+	// The active window passing changes the version too, so a poller sees active go false.
+	c.now = func() time.Time { return time.Now().Add(time.Hour) }
+	full, v3, err := c.ConversationIfChanged(conv.Claude, "c1", v2)
+	if err != nil || full == nil || v3 == v2 || full.Active {
+		t.Fatalf("after the active window = %+v, %q, %v", full, v3, err)
+	}
+}
