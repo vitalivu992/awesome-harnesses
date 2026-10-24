@@ -109,7 +109,9 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   settings (`serverVars`) from the shells' environment, skips gzip for upgrades, and
   `statusWriter.Unwrap` lets the upgrade hijack.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
-  `GET /api/conversations/{harness}/{id}`. `cmd/server` adds gzip for `/api/*` and an access log,
+  `GET /api/conversations/{harness}/{id}` (ETag = `Catalog.ConversationIfChanged` version: size +
+  mtime + active flag, so it also changes when the active window passes; `If-None-Match` → 304
+  without parsing). `cmd/server` adds gzip for `/api/*` and an access log,
   and listens on `HOST` (default `127.0.0.1`).
 - `web/` — `go:embed` of `web/dist` + SPA fallback handler (404s unknown `/api/*` and `/health`).
 
@@ -121,7 +123,12 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   `lib/redaction.js` peel away, welcome line, aperture via the `--ah-hole` `@property`; click or
   key skips; reduced motion = fade) — `UNLOCK_MS` matches the CSS timings.
 - `App.jsx` (browser) — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
-  `useFetch` aborts stale loads.
+  `useFetch` aborts stale loads. `hooks/useLiveConversation.js` loads the open conversation and
+  polls it with its ETag (`lib/live.js` `pollDelay`: 2 s while active, 15 s otherwise, paused
+  while the page is hidden). `isWorking` = active + last turn `incomplete`: `ConversationView`
+  then shows the work, marks the last turn "Working…" and keeps the chat at the bottom if it was
+  there; when it flips back the work collapses. `e2e/live.spec.js` appends to a transcript
+  mid-test, in its own Playwright project (chromium → live → shells) because it adds the newest project.
 - `components/Shells.jsx` — `ShellProvider` (shell list restored from `/api/shells`, active tab,
   open/minimized; `useShells().openShell({cwd, run})` from the project rows and the Resume
   popover) and `ShellPanel` (tab bar = status bar, drag-to-resize, height in prefs).

@@ -88,6 +88,10 @@ in memory). A browser that restores the last session on start also restores this
   expands every answer's work details; **Resume** opens the resume command with a
   *Bypass permissions* option, a copy button and **Run in shell** (opens a terminal tab in the
   conversation's folder and runs the command).
+- **Live sessions**: an open conversation refreshes by itself (every 2 s while its transcript
+  changed in the last 2 minutes, every 15 s otherwise) and new messages appear as the agent
+  writes them. While the agent is working, the work is shown and the chat follows the newest
+  step; when the turn ends the work collapses and the final answer is left.
 - **Terminal** (bottom of the conversation column): any number of shell tabs. Open one with the
   terminal button on a project row (hover), **+** in the terminal bar (current project's
   folder) or **Run in shell**. Each tab shows its number, the current folder and the running
