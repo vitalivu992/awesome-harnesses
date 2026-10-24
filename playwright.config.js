@@ -13,12 +13,19 @@ export default defineConfig({
   fullyParallel: true,
   use: { baseURL, trace: "retain-on-failure" },
   projects: [
-    { name: "chromium", testIgnore: /shell\.spec\.js/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
-    // Logging out (auth.spec) ends every shell: the shell specs run after the others.
+    { name: "chromium", testIgnore: /(shell|live)\.spec\.js/, use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
+    // The live spec adds a project with the newest transcript: it runs after the specs that expect demo_app first.
+    {
+      name: "live",
+      testMatch: /live\.spec\.js/,
+      dependencies: ["chromium"],
+      use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
+    },
+    // Logging out (auth.spec) ends every shell, and the live project would be listed first: the shell specs run last.
     {
       name: "shells",
       testMatch: /shell\.spec\.js/,
-      dependencies: ["chromium"],
+      dependencies: ["live"],
       use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } },
     },
   ],
