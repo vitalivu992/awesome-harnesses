@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { greeting } from "../lib/format.js"
 import { THEMES, setTheme } from "../lib/theme.js"
 import { useTheme } from "../hooks/useTheme.js"
 
@@ -48,7 +49,7 @@ function LogoutDialog({ open, onCancel, onConfirm }) {
 }
 
 /**
- * The projects panel's footer: the username and a kebab menu with Settings,
+ * The projects panel's footer: a greeting with the username and a kebab menu with Settings,
  * the theme (system / light / dark) and Log out, which asks first. `compact`
  * (the collapsed rail) shows only the kebab.
  */
@@ -56,6 +57,12 @@ export function UserMenu({ user, onLogout, onOpenSettings, compact = false }) {
   const { pref } = useTheme()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  // The greeting follows the time of day.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
   const root = useRef(null)
   const button = useRef(null)
   const menu = useRef(null)
@@ -92,7 +99,9 @@ export function UserMenu({ user, onLogout, onOpenSettings, compact = false }) {
       {compact ? null : (
         <span className="ah-user" title={`Logged in as ${user}`}>
           <i className="fa-solid fa-circle-user" aria-hidden="true"></i>
-          <span className="ah-user__name">{user}</span>
+          <span className="ah-user__name">
+            {greeting(now)}, <strong>{user}</strong>
+          </span>
         </span>
       )}
       <button

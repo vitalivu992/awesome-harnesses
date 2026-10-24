@@ -74,6 +74,15 @@ export const STATUSES = {
   active: { label: "Recently active", icon: "fa-circle-dot" },
 }
 
+/** "Good morning" … "Good evening" by the hour of `date`, "Hi" late at night. */
+export function greeting(date = new Date()) {
+  const h = date.getHours()
+  if (h >= 5 && h < 12) return "Good morning"
+  if (h >= 12 && h < 18) return "Good afternoon"
+  if (h >= 18 && h < 23) return "Good evening"
+  return "Hi"
+}
+
 export function statusMeta(status) {
   return STATUSES[status] || STATUSES.done
 }

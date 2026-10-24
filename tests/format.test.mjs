@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { agentLabel, cursorClient, duration, formatMs, modelLabel, shortDateTime } from "../src/lib/format.js"
+import { agentLabel, cursorClient, duration, formatMs, greeting, modelLabel, shortDateTime } from "../src/lib/format.js"
 
 describe("modelLabel", () => {
   it.each([
@@ -57,4 +57,17 @@ describe("times", () => {
     expect(shortDateTime(new Date(2025, 0, 5, 9, 7).toISOString(), now)).toBe("2025-01-05")
     expect(shortDateTime("nope", now)).toBe("")
   })
+})
+
+describe("greeting", () => {
+  it.each([
+    [4, "Hi"],
+    [5, "Good morning"],
+    [11, "Good morning"],
+    [12, "Good afternoon"],
+    [17, "Good afternoon"],
+    [18, "Good evening"],
+    [22, "Good evening"],
+    [23, "Hi"],
+  ])("%i h → %s", (hour, want) => expect(greeting(new Date(2026, 9, 25, hour, 30))).toBe(want))
 })

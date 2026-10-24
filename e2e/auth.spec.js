@@ -28,6 +28,8 @@ test("logs in with an unlock sequence, then logs out", async ({ page }) => {
   await page.reload()
   await expect(page.locator("#ahProjects")).toContainText("demo_app")
   await expect(page.locator("#ahLogin")).toHaveCount(0)
+  // The panel's footer greets the user by the time of day.
+  await expect(page.locator(".ah-user__name")).toHaveText(/^(Good (morning|afternoon|evening)|Hi), demo$/)
 
   // Log out from the account menu, after a confirmation; the login screen comes in over the app.
   await page.locator("#ahUserMenu").click()
