@@ -1,0 +1,128 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  GOTOOLCHAIN: local
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-amd64
+            runs-on: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            cgo: "1"
+          - id: linux-arm64
+            runs-on: ubuntu-latest
+            goos: linux
+            goarch: arm64
+            cgo: "1"
+            cross: aarch64-linux-gnu-
+          - id: windows-amd64
+            runs-on: ubuntu-latest
+            goos: windows
+            goarch: amd64
+            cgo: "0"
+          - id: darwin-amd64
+            runs-on: macos-latest
+            goos: darwin
+            goarch: amd64
+            cgo: "1"
+          - id: darwin-arm64
+            runs-on: macos-latest
+            goos: darwin
+            goarch: arm64
+            cgo: "1"
+
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Install Linux build deps
+        if: matrix.goos == 'linux' && matrix.runs-on == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpam0g-dev
+          if [ "${{ matrix.goarch }}" = arm64 ]; then
+            sudo dpkg --add-architecture arm64
+            sudo apt-get update
+            sudo apt-get install -y gcc-aarch64-linux-gnu libpam0g-dev:arm64
+          fi
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build web bundle
+        run: pnpm build
+
+      - name: Build and package
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: ${{ matrix.cgo }}
+          CC: ${{ matrix.cross }}gcc
+          CXX: ${{ matrix.cross }}g++
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          base="awesome-harness-${GOOS}-${GOARCH}"
+          if [ "$GOOS" = windows ]; then
+            out="dist/${base}.exe"
+          else
+            out="dist/${base}"
+          fi
+          go build -trimpath -ldflags "-s -w" -o "$out" ./cmd/server
+          tar czf "dist/${base}.tar.gz" -C dist "$(basename "$out")"
+          ls -l dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkg-${{ matrix.id }}
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: pkg-*
+          merge-multiple: true
+
+      - name: SHA256SUMS
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist && shasum -a 256 awesome-harness-*.tar.gz > SHA256SUMS)
+          ls -l dist
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/awesome-harness-*.tar.gz
+            dist/SHA256SUMS
