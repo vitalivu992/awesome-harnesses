@@ -60,20 +60,31 @@ export function ConversationList({ project, conversations, loading, error, selec
           onChange={(e) => setText(e.target.value)}
         />
       </div>
-      <div className="ah-segmented" role="group" aria-label="Harness">
-        {filters.map((h) => (
-          <button
-            key={h || "all"}
-            type="button"
-            className={harness === h ? "is-active" : ""}
-            aria-pressed={harness === h}
-            onClick={() => setHarness(h)}
-          >
-            {h ? <HarnessIcon harness={h} size={12} /> : null}
-            {h ? harnessName(h) : "All"}
-            <span className="ah-count">{counts[h] || 0}</span>
-          </button>
-        ))}
+      <div className="ah-segmented ah-segmented--harness" role="group" aria-label="Harness">
+        {filters.map((h) => {
+          // "All" and the selected harness show name and count; the others only their icon.
+          const full = !h || harness === h
+          const label = h ? harnessName(h) : "All"
+          return (
+            <button
+              key={h || "all"}
+              type="button"
+              className={`${harness === h ? "is-active" : ""}${full ? "" : " is-icon"}`}
+              aria-pressed={harness === h}
+              aria-label={`${label} ${counts[h] || 0}`}
+              title={`${label}: ${plural(counts[h] || 0, "conversation")}`}
+              onClick={() => setHarness(h)}
+            >
+              {h ? <HarnessIcon harness={h} size={12} /> : null}
+              {full ? (
+                <>
+                  {label}
+                  <span className="ah-count">{counts[h] || 0}</span>
+                </>
+              ) : null}
+            </button>
+          )
+        })}
       </div>
       {error ? <p className="ah-error">Could not load conversations: {error.message}</p> : null}
       {loading && !conversations ? <p className="ah-empty">Loading conversations…</p> : null}

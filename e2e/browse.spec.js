@@ -57,9 +57,14 @@ test("collapses the projects panel and filters by harness", async ({ page }) => 
   await page.getByRole("button", { name: "Expand projects" }).click()
   await expect(page.locator("#ahProjects")).toBeVisible()
 
+  // "All" shows name and count; the other harnesses only their icon until selected.
   const chips = page.locator(".ah-segmented button")
-  await expect(chips).toHaveText([/All\s*4/, /Claude Code\s*1/, /Cursor\s*1/, /Codex\s*1/, /pi\s*1/])
-  await chips.filter({ hasText: "Cursor" }).click()
+  await expect(chips).toHaveText([/All\s*4/, "", "", "", ""])
+  for (const [i, name] of ["All 4", "Claude Code 1", "Cursor 1", "Codex 1", "pi 1"].entries()) {
+    await expect(chips.nth(i)).toHaveAccessibleName(name)
+  }
+  await chips.nth(2).click()
+  await expect(chips).toHaveText([/All\s*4/, "", /Cursor\s*1/, "", ""])
   await expect(page.locator("#ahConversations [data-conversation]")).toHaveCount(1)
   await expect(page.locator("#ahConversations")).toContainText("Fix the login form")
 })

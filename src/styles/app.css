@@ -350,6 +350,21 @@ body {
   line-height: 16px;
 }
 
+/* Harness filter: one line; only "All" and the selected harness spell out name and count. */
+.ah-segmented--harness {
+  flex-wrap: nowrap;
+}
+
+.ah-segmented--harness button {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ah-segmented--harness button.is-icon {
+  flex: 1 0 auto;
+  padding: 4px 7px;
+}
+
 /* ---------- projects ---------- */
 
 .ah-project,
