@@ -117,10 +117,12 @@ function TextStep({ step }) {
 export function Step({ step }) {
   const time = clockTime(step.at)
   return (
-    <li className="ah-step-row">
-      <time className="ah-step-row__time" dateTime={step.at} title={step.at}>
-        {time}
-      </time>
+    <li className={`ah-step-row${time ? "" : " ah-step-row--untimed"}`}>
+      {time ? (
+        <time className="ah-step-row__time" dateTime={step.at} title={step.at}>
+          {time}
+        </time>
+      ) : null}
       <div className="ah-step-row__body">{step.kind === "tool" ? <ToolStep step={step} /> : <TextStep step={step} />}</div>
     </li>
   )
