@@ -95,7 +95,7 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   demo / demo-password for Playwright. `AUTH_DISABLED=1` (`Handler.NoLogin`) turns the login off:
   every request is the server's user — for agents driving a browser against the running service.
 - `internal/shell` — the terminal panel: login shells in PTYs (`aymanbagabas/go-pty`: creack/pty
-  on Unix, ConPTY on Windows), kept in a server-wide `Manager` (tab number = lowest free).
+  on Unix, ConPTY on Windows), kept in a server-wide `Manager` (tab numbers count up from the server's start, never reused).
   `GET/POST /api/shells`, `DELETE /api/shells/{id}`, WebSocket `GET /api/shells/{id}/attach`
   (`coder/websocket`; its Origin check stops other sites/ports): binary = terminal bytes, text =
   JSON (`resize` in; `status`/`exit` with the shell's info out). 512 KB scrollback replayed on
@@ -122,6 +122,9 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   browser mounts under `LoginScreen`, which plays the unlock sequence (redaction bars from
   `lib/redaction.js` peel away, welcome line, aperture via the `--ah-hole` `@property`; click or
   key skips; reduced motion = fade) — `UNLOCK_MS` matches the CSS timings.
+  A logout runs it the other way: `LoginScreen locking` mounts over the still-mounted browser
+  (backdrop blurs and turns opaque, then the form fades in; `LOCK_MS`), the browser unmounts
+  once both the logout request and `LOCK_MS` are done; `LOGGED_OUT_EVENT`s are ignored meanwhile.
 - `App.jsx` (browser) — three columns; the selection is in the URL (`?project=<key>&c=<harness>:<id>`).
   `useFetch` aborts stale loads. `hooks/useLiveConversation.js` loads the open conversation and
   polls it with its ETag (`lib/live.js` `pollDelay`: 2 s while active, 15 s otherwise, paused
@@ -134,7 +137,10 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   popover) and `ShellPanel` (tab bar = status bar, drag-to-resize, height in prefs).
   `Terminal.jsx` (lazy: xterm.js + fit addon) keeps one xterm per shell mounted while hidden,
   resets before a reattach's scrollback replay; `lib/shells.js` holds its pure helpers.
-- `components/` — `ProjectsPanel` (collapsible rail; user + **Log out** in the footer), `ConversationList`, `ConversationView`
+- `components/` — `ProjectsPanel` (collapsible rail; projects whose folder is gone hidden until
+  the header count is clicked; footer = `UserMenu`: user + kebab menu with theme radio items
+  and **Log out**, which asks in a `<dialog>`), `ConversationList` (harness filter: icons only,
+  "All" and the selected harness with name + count), `ConversationView`
   (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
   collapsed by default, global Show/Hide work), `Step` (thinking/note/tool rows; tool input shown
   as shell/diff/JSON, output on click), `ResumeButton`, `Markdown` (markdown-it + hljs + GitHub
@@ -143,7 +149,7 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   `resume.js` (per-harness resume argv + bypass flag, or `noBypass` reason when the CLI has none;
   POSIX quoting), `tools.js` (tool icon/summary across the harnesses' tool names, incl. Codex
   argv `command` arrays, apply_patch and code-mode `exec` strings), `markdown.js`, `theme.js`, `prefs.js` (localStorage `ah_prefs`: theme,
-  collapsed panel, bypass checkbox — UI prefs only, reads/writes never throw).
+  collapsed panel, missing projects shown, bypass checkbox — UI prefs only, reads/writes never throw).
 - Styling: Primer CSS tokens + Font Awesome; app colours are `--ah-*` variables in
   `src/styles/app.css` with dark values under `[data-color-mode="dark"]` (set on `<html>` by
   `theme.js` and the inline script in `index.html`).

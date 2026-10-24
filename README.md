@@ -73,17 +73,19 @@ answer, and the server checks one password at a time.
   password. Failed logins count towards the Windows account lockout policy.
 
 The session is a cookie with no expiry: it ends when you quit the browser, when you click
-**Log out** (bottom of the projects panel), or when the server restarts (sessions are kept
+**Log out** (the ⋮ menu at the bottom of the projects panel, after a confirmation), or when the server restarts (sessions are kept
 in memory). A browser that restores the last session on start also restores this cookie.
 
 ## The UI
 
 - **Projects** (left, collapsible to a rail of initials): every directory an agent ran in,
   with the number of conversations per harness and the last activity. A project used from
-  several harnesses is one entry. Projects whose folder is gone are greyed out.
+  several harnesses is one entry. Projects whose folder is gone are hidden: click the count
+  next to **Projects** to show them (greyed out) or hide them again. The footer shows the
+  username and a ⋮ menu with the theme (system, light, dark) and **Log out**.
 - **Conversations**: title, status icon, harness + model, prompt and tool-call counts, last
-  update. Filter by text (title, model, branch) and by harness (one chip per harness the
-  project has).
+  update. Filter by text (title, model, branch) and by harness: **All** with its count, then
+  one icon per harness the project has; the selected harness also shows its name and count.
 - **Conversation**: header with harness/model, branch, start time, session id; **Show work**
   expands every answer's work details; **Resume** opens the resume command with a
   *Bypass permissions* option, a copy button and **Run in shell** (opens a terminal tab in the
@@ -94,8 +96,8 @@ in memory). A browser that restores the last session on start also restores this
   step; when the turn ends the work collapses and the final answer is left.
 - **Terminal** (bottom of the conversation column): any number of shell tabs. Open one with the
   terminal button on a project row (hover), **+** in the terminal bar (current project's
-  folder) or **Run in shell**. Each tab shows its number, the current folder and the running
-  command; click a tab to switch, **×** to end the shell, the chevron (or the active tab) to
+  folder) or **Run in shell**. Each tab shows its number (counting up from the server's
+  start) and the current folder; the tooltip adds the running command. Click a tab to switch, **×** to end the shell, the chevron (or the active tab) to
   minimize the panel to its status bar. Drag the top edge to resize. Shells are login shells
   (`$SHELL -l`; PowerShell on Windows) that keep running when the page reloads (the last
   512 KB of output is replayed) and end on **Log out**. Ctrl+Shift+C copies the selection.
