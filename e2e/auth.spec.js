@@ -35,7 +35,10 @@ test("logs in with an unlock sequence, then logs out", async ({ page }) => {
 })
 
 test("a click skips the unlock sequence", async ({ page }) => {
+  // Freeze timers so the sequence can't end on its own before the click (a busy run is slow).
+  await page.clock.install({ time: new Date("2026-01-01T00:00:00Z") })
   await page.goto("/")
+  await page.clock.pauseAt(new Date("2026-01-01T01:00:00Z"))
   await page.getByLabel("Username").fill("demo")
   await page.getByLabel("Password").fill("demo-password")
   await page.getByLabel("Password").press("Enter")

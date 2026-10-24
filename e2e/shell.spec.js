@@ -34,7 +34,8 @@ test("opens shells from the project list, streams commands, minimizes and closes
   // The tab shows the running command, then the prompt again.
   await page.keyboard.type("sleep 30")
   await page.keyboard.press("Enter")
-  await expect(tabs.first()).toContainText("sleep 30")
+  // macOS gives only the program name (proc_darwin.go), Linux the whole command line.
+  await expect(tabs.first()).toContainText(process.platform === "darwin" ? "sleep" : "sleep 30")
   await page.keyboard.press("Control+C")
   await expect(tabs.first()).not.toContainText("sleep")
 
