@@ -1,8 +1,8 @@
 import { statusMeta } from "../lib/format.js"
 
 /** Conversation / turn status icon, coloured by status (styles: .ah-status--*). */
-export function StatusIcon({ status, active = false }) {
-  const key = active ? "active" : status || "done"
+export function StatusIcon({ status }) {
+  const key = status || "done"
   const meta = statusMeta(key)
   return (
     <i

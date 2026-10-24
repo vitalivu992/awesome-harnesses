@@ -852,11 +852,6 @@ body {
   color: var(--fgColor-muted, #59636e);
 }
 
-.ah-status--active {
-  color: var(--fgColor-accent, #0969da);
-  animation: ah-pulse 1.6s ease-in-out infinite;
-}
-
 @keyframes ah-pulse {
   50% {
     opacity: 0.35;
@@ -1012,7 +1007,6 @@ body {
     display: none;
   }
 
-  .ah-status--active,
   .ah-live--running > i,
   .ah-rail__live.ah-live--running,
   .ah-working-word {

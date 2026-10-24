@@ -166,7 +166,7 @@ function Header({ conversation, working, expandAll, onExpandAll }) {
     <header className="ah-view__head">
       <div className="ah-view__titles">
         <h1 className="ah-view__title" title={c.title}>
-          <StatusIcon status={c.status} active={c.active} /> {c.title}
+          {c.active ? null : <StatusIcon status={c.status} />} {c.title}
         </h1>
         <div className="ah-view__meta">
           {models.map((m) => (
@@ -174,9 +174,9 @@ function Header({ conversation, working, expandAll, onExpandAll }) {
               <HarnessIcon harness={c.harness} size={12} /> {agentLabel(c.harness, m)}
             </span>
           ))}
-          {c.active ? (
+          {c.active && !working ? (
             <span className="ah-chip ah-chip--live" title="Updates as the session writes to its transcript">
-              <i className="fa-solid fa-tower-broadcast" aria-hidden="true"></i> {working ? "Working" : "Live"}
+              <i className="fa-solid fa-tower-broadcast" aria-hidden="true"></i> Live
             </span>
           ) : null}
           <ClientBadge conversation={c} />

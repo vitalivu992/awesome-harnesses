@@ -71,7 +71,6 @@ export const STATUSES = {
   error: { label: "Ended with an error", icon: "fa-circle-xmark" },
   aborted: { label: "Interrupted", icon: "fa-circle-stop" },
   incomplete: { label: "Unfinished", icon: "fa-circle-half-stroke" },
-  active: { label: "Recently active", icon: "fa-circle-dot" },
 }
 
 /** "Good morning" … "Good evening" by the hour of `date`, "Hi" late at night. */
