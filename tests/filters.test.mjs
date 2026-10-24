@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { filterConversations } from "../src/components/ConversationList.jsx"
-import { filterProjects, listedProjects } from "../src/components/ProjectsPanel.jsx"
+import { filterProjects, listedProjects, liveLabel, projectLive } from "../src/components/ProjectsPanel.jsx"
 import { workSummary } from "../src/components/ConversationView.jsx"
 import { splitConversationKey } from "../src/App.jsx"
 
@@ -15,6 +15,14 @@ describe("filters", () => {
     expect(filterConversations(convs, { text: "opus 5.5" }).map((c) => c.id)).toEqual(["a"])
     expect(filterConversations(convs, { text: "FEAT/" }).map((c) => c.id)).toEqual(["b"])
     expect(filterConversations(convs, {}).length).toBe(2)
+  })
+  it("gives a project's live state and label, working first", () => {
+    expect(projectLive({ running: 1, finished: 2 })).toBe("running")
+    expect(projectLive({ finished: 2 })).toBe("finished")
+    expect(projectLive({})).toBe("")
+    expect(liveLabel({ running: 1, finished: 2 })).toBe("1 working, 2 just finished")
+    expect(liveLabel({ finished: 1 })).toBe("1 just finished")
+    expect(liveLabel({})).toBe("")
   })
   it("filters projects by name or path", () => {
     const projects = [{ key: "/w/app", name: "app", path: "/w/app" }, { key: "/x/tool", name: "tool", path: "/x/tool" }]

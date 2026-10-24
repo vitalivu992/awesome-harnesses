@@ -44,6 +44,15 @@ test("follows a working session and collapses its work when it ends", async ({ p
   await expect(page.locator(".ah-chip--live")).toHaveText(/Working/)
   await expect(chat.locator(".ah-turn-status--live")).toHaveText(/Working…/)
   await expect(chat.locator(".ah-step-row")).toHaveCount(1)
+  // The header carries the progress bar; the project and the conversation the working icon.
+  await expect(page.locator(".ah-view__head .ah-progress")).toHaveCount(1)
+  const projectRow = page.locator(`.ah-project[data-project="${LIVE}"]`)
+  const convRow = page.locator(`.ah-conv[data-conversation="claude:${ID}"]`)
+  await expect(projectRow).toHaveClass(/is-running/)
+  await expect(projectRow.locator(".ah-live--running")).toHaveAttribute("aria-label", "1 working")
+  await expect(convRow).toHaveClass(/is-running/)
+  await expect(convRow.locator(".ah-live--running")).toHaveCount(1)
+  await expect(page.locator(".ah-progress")).toHaveCount(1)
 
   // The agent writes another tool call: it shows up without a reload.
   appendFileSync(FILE, lines(toolUse("t2", "go vet ./...", "2026-10-20T10:00:06Z"), toolResult("t2", "", "2026-10-20T10:00:07Z")))
@@ -64,4 +73,10 @@ test("follows a working session and collapses its work when it ends", async ({ p
   await expect(chat.locator(".ah-turn-status--live")).toHaveCount(0)
   await expect(page.locator("#ahExpandAll")).toHaveText(/Show work/)
   await expect(page.locator(".ah-chip--live")).toHaveText(/Live/)
+  await expect(page.locator(".ah-view__head .ah-progress")).toHaveCount(0)
+  // The lists reload by themselves: the working icons turn into "just finished" checks.
+  await expect(convRow).toHaveClass(/is-finished/, { timeout: 10_000 })
+  await expect(convRow.locator(".ah-live--finished")).toHaveCount(1)
+  await expect(projectRow).toHaveClass(/is-finished/, { timeout: 20_000 })
+  await expect(projectRow.locator(".ah-live--finished")).toHaveAttribute("aria-label", "1 just finished")
 })

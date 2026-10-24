@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react"
 import { HARNESS_IDS, harnessName, longDateTime, modelLabel, plural, relativeTime, shortDateTime, statusMeta } from "../lib/format.js"
+import { liveState } from "../lib/live.js"
 import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
+import { LiveIcon } from "./Running.jsx"
 
 /** Conversations of one harness ("" = any) whose title or model contains `text`. */
 export function filterConversations(conversations, { harness = "", text = "" } = {}) {
@@ -14,7 +16,10 @@ export function filterConversations(conversations, { harness = "", text = "" } =
   })
 }
 
-/** Second column: the selected project's conversations, newest first. */
+/**
+ * Second column: the selected project's conversations, newest first. The ones an agent is
+ * working on, or has just finished, carry a live icon.
+ */
 export function ConversationList({ project, conversations, loading, error, selectedId, onSelect, onRefresh }) {
   const [text, setText] = useState("")
   const [harness, setHarness] = useState("")
@@ -92,17 +97,19 @@ export function ConversationList({ project, conversations, loading, error, selec
         {shown.map((c) => {
           const key = `${c.harness}:${c.id}`
           const model = modelLabel(c.models?.[c.models.length - 1])
+          const live = liveState(c)
           return (
             <li key={key}>
               <button
                 type="button"
-                className={`ah-conv${key === selectedId ? " is-active" : ""}${c.status === "error" ? " is-error" : ""}`}
+                className={`ah-conv${key === selectedId ? " is-active" : ""}${c.status === "error" ? " is-error" : ""}${live ? ` is-${live}` : ""}`}
                 aria-current={key === selectedId ? "true" : undefined}
                 data-conversation={key}
                 onClick={() => onSelect(key)}
               >
                 <span className="ah-conv__top">
                   <span className="ah-conv__title">{c.title}</span>
+                  <LiveIcon state={live} title={live === "finished" ? "The agent just finished" : "The agent is working"} />
                   {c.status === "error" ? (
                     <i
                       className="fa-solid fa-circle-exclamation ah-conv__issue"

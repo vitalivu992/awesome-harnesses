@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { atBottom, isWorking, pollDelay } from "../src/lib/live.js"
+import { atBottom, isWorking, listPollDelay, liveState, pollDelay } from "../src/lib/live.js"
 
 describe("isWorking", () => {
   it.each([
@@ -15,6 +15,24 @@ describe("pollDelay", () => {
     expect(pollDelay({ active: true })).toBe(2000)
     expect(pollDelay({ active: false })).toBe(15000)
   })
+})
+
+describe("listPollDelay", () => {
+  it("reloads a list soon while something in it runs", () => {
+    expect(listPollDelay(true)).toBe(4000)
+    expect(listPollDelay(false)).toBe(15000)
+  })
+})
+
+describe("liveState", () => {
+  it.each([
+    [{ active: true, turns: 2, status: "incomplete" }, "running"],
+    [{ active: true, turns: 2, status: "done" }, "finished"],
+    [{ active: true, turns: 2, status: "error" }, "finished"],
+    [{ active: true, turns: 0, status: "incomplete" }, ""],
+    [{ active: false, turns: 2, status: "incomplete" }, ""],
+    [null, ""],
+  ])("%o → %o", (c, want) => expect(liveState(c)).toBe(want))
 })
 
 describe("atBottom", () => {

@@ -10,6 +10,17 @@ export function pollDelay(conversation) {
   return conversation?.active ? 2000 : 15000
 }
 
+/** How long before a list (projects, conversations) is reloaded: soon while something in it is running. */
+export function listPollDelay(running) {
+  return running ? 4000 : 15000
+}
+
+/** A listed conversation's live mark: "running", "finished" (active, last turn ended) or "". */
+export function liveState(conversation) {
+  if (!conversation?.active || !conversation.turns) return ""
+  return conversation.status === "incomplete" ? "running" : "finished"
+}
+
 /** The scroll box is at (or within `slack` px of) its bottom. */
 export function atBottom(el, slack = 80) {
   return el.scrollHeight - el.scrollTop - el.clientHeight <= slack

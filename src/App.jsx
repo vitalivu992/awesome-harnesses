@@ -10,6 +10,7 @@ import {
 import { readPrefs, writePref } from "./lib/prefs.js"
 import { useFetch } from "./hooks/useFetch.js"
 import { useLiveConversation } from "./hooks/useLiveConversation.js"
+import { listPollDelay } from "./lib/live.js"
 import { ProjectsPanel, isMissing } from "./components/ProjectsPanel.jsx"
 import { ConversationList } from "./components/ConversationList.jsx"
 import { ConversationView } from "./components/ConversationView.jsx"
@@ -37,9 +38,13 @@ function Browser({ user, onLogout }) {
   const [projectsReload, setProjectsReload] = useState(0)
   const [convsReload, setConvsReload] = useState(0)
 
-  const projects = useFetch((signal) => fetchProjects({ signal }), [projectsReload])
+  // Both lists reload quietly, so the projects and conversations an agent is working on stay marked.
+  const projects = useFetch((signal) => fetchProjects({ signal }), [projectsReload], {
+    poll: (list) => listPollDelay(list?.some((p) => p.running)),
+  })
   const conversations = useFetch((signal) => fetchConversations(projectKey, { signal }), [projectKey, convsReload], {
     enabled: Boolean(projectKey),
+    poll: (list) => listPollDelay(list?.some((c) => c.active)),
   })
   const [harness, id] = splitConversationKey(convKey)
   const conversation = useLiveConversation(harness, id)

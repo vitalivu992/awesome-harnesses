@@ -656,6 +656,7 @@ body {
 }
 
 .ah-rail__item {
+  position: relative;
   width: 36px;
   height: 36px;
   border-radius: 10px;
@@ -674,6 +675,18 @@ body {
 
 .ah-rail__item.is-active {
   border-color: var(--ah-active-bar);
+}
+
+/* A dot in the badge's corner: pulsing while an agent works, green once it has just finished. */
+.ah-rail__live {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px var(--bgColor-default, #fff);
+  background: currentColor;
 }
 
 /* ---------- conversation list ---------- */
@@ -849,6 +862,121 @@ body {
   }
 }
 
+/* ---------- running (components/Running.jsx) ----------
+   Windows 11's indeterminate progress bar on the bottom edge of the view
+   header: an agent is at work there. Two segments (40 % and 60 % wide) cross
+   the edge in turn, every 2 s. */
+
+.ah-progress {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  pointer-events: none;
+}
+
+.ah-progress::before,
+.ah-progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: inherit;
+  background: var(--ah-progress-color, var(--ah-active-bar));
+  transform: translateX(-100%);
+}
+
+.ah-progress::before {
+  width: 40%;
+  animation: ah-progress-a 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.ah-progress::after {
+  width: 60%;
+  animation: ah-progress-b 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* translateX is in the segment's own width: 100 % / 40 % = 250 %, 100 % / 60 % ≈ 167 %. */
+@keyframes ah-progress-a {
+  from {
+    transform: translateX(-100%);
+  }
+  50%,
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes ah-progress-b {
+  from,
+  37.5% {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(167%);
+  }
+}
+
+/* The view header's bar runs along its whole bottom border. */
+.ah-progress--edge {
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 0;
+}
+
+/* The live icon on list rows: pulsing broadcast while an agent works, a check once it just finished. */
+.ah-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.ah-conv__top .ah-live {
+  margin-top: 3px;
+}
+
+.ah-live--running {
+  color: var(--fgColor-accent, #0969da);
+}
+
+.ah-live--running > i,
+.ah-rail__live.ah-live--running {
+  animation: ah-pulse 1.6s ease-in-out infinite;
+}
+
+.ah-live--finished {
+  color: var(--fgColor-success, #1a7f37);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ah-progress::before {
+    width: 100%;
+    transform: none;
+    opacity: 0.6;
+    animation: none;
+  }
+
+  .ah-progress::after {
+    display: none;
+  }
+
+  .ah-status--active,
+  .ah-live--running > i,
+  .ah-rail__live.ah-live--running {
+    animation: none;
+  }
+}
+
 .ah-harness-icon {
   flex-shrink: 0;
   vertical-align: -2px;
@@ -870,6 +998,7 @@ body {
 }
 
 .ah-view__head {
+  position: relative;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;

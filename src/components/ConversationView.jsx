@@ -4,6 +4,7 @@ import { atBottom, isWorking } from "../lib/live.js"
 import { ClientBadge, HarnessIcon } from "./HarnessIcon.jsx"
 import { Markdown } from "./Markdown.jsx"
 import { ResumeButton } from "./ResumeButton.jsx"
+import { RunningBar } from "./Running.jsx"
 import { StatusIcon } from "./StatusIcon.jsx"
 import { Step } from "./Step.jsx"
 
@@ -174,6 +175,7 @@ function Header({ conversation, working, expandAll, onExpandAll }) {
         </button>
         <ResumeButton conversation={c} />
       </div>
+      {working ? <RunningBar className="ah-progress--edge" /> : null}
     </header>
   )
 }
