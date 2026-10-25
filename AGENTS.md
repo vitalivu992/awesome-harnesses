@@ -9,7 +9,7 @@ make build                  # pnpm build → web/dist (go:embed) + go build -o b
 make dev | make dev-web     # Go server on :8767 | Vite HMR on :5173 proxying /api
 make run                    # build, then bin/server in the foreground with .env applied
 make up|down|install|logs   # per-user service via ctl.sh: systemd user unit (Linux),
-                            # launchd agent dev.awesome-harness (macOS; plist generated)
+                            # launchd agent dev.awesome-harness (macOS), both generated with the checkout path
 go test ./...               # Go tests (parsers, catalog, api)
 pnpm test:unit              # vitest (tests/*.test.mjs; JSX helpers import fine)
 pnpm test:e2e               # playwright: e2e/make-fixtures.mjs writes a fake home to .e2e-home/,
