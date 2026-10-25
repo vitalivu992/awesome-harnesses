@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { nextWorkingWord } from "../lib/live.js"
 
 /**
@@ -9,18 +9,10 @@ export function RunningBar() {
   return <span className="ah-progress" aria-hidden="true"></span>
 }
 
-/** "Pondering…", "Brewing…": a new word every `every` ms while the agent works. */
-export function WorkingWord({ every = 3000 }) {
-  const [word, setWord] = useState(() => nextWorkingWord(""))
-  useEffect(() => {
-    const timer = setInterval(() => setWord((w) => nextWorkingWord(w)), every)
-    return () => clearInterval(timer)
-  }, [every])
-  return (
-    <span className="ah-working-word" key={word}>
-      {word}…
-    </span>
-  )
+/** "Pondering…", "Brewing…": one word per turn — a fresh mount (a new prompt) picks a new one. */
+export function WorkingWord() {
+  const [word] = useState(() => nextWorkingWord(""))
+  return <span className="ah-working-word">{word}…</span>
 }
 
 const LIVE = {

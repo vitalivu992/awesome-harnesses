@@ -117,9 +117,9 @@ in memory). A browser that restores the last session on start also restores this
   and a **command preview** of what a new conversation would run with those settings.
 - **Live sessions**: an open conversation refreshes by itself (every 2 s while its transcript
   changed in the last 2 minutes, every 15 s otherwise) and new messages appear as the agent
-  writes them. While the agent is working, the work is shown, a rotating word ("Pondering…",
-  "Brewing…") sits under its latest text and the chat follows the newest step; when the turn
-  ends the work collapses and the final answer is left.
+  writes them. While the agent is working, the work is shown, a word ("Pondering…", "Brewing…"
+  — a new one per prompt) sits under its latest text and the chat follows the newest step;
+  when the turn ends the work collapses and the final answer is left.
 - **Running sessions**: a project or conversation an agent is working on (transcript changed
   in the last 2 minutes, last turn not finished) shows a flashing blue dot; once the turn
   ends it turns into a green check until the 2 minutes pass (a dot on the collapsed rail's
