@@ -7,9 +7,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BIN="$ROOT/bin/server"
 NAME=awesome-harness
 
-# Linux: the unit in systemd/ is symlinked into the user's unit directory.
+# Linux: the user unit is generated with this checkout's paths.
 UNIT="$NAME.service"
-UNIT_SRC="$ROOT/systemd/$UNIT"
 UNIT_DST="$HOME/.config/systemd/user/$UNIT"
 
 # macOS: the agent's plist is generated with this checkout's paths.
@@ -64,6 +63,30 @@ cmd_run() {
   exec "$BIN"
 }
 
+write_unit() {
+  # % starts a specifier in unit files; a folder with one in its name needs it doubled.
+  local root="${ROOT//%/%%}"
+  mkdir -p "$(dirname "$UNIT_DST")"
+  # Older installs symlinked a checked-in unit here; don't write through the link.
+  rm -f "$UNIT_DST"
+  cat >"$UNIT_DST" <<EOF
+[Unit]
+Description=Awesome Harnesses (read-only viewer for coding-agent data)
+Documentation=file://$root/README.md
+
+[Service]
+Type=exec
+WorkingDirectory=$root
+EnvironmentFile=-$root/.env
+ExecStart="$root/bin/server"
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target
+EOF
+}
+
 write_plist() {
   mkdir -p "$(dirname "$PLIST")" "$(dirname "$LOG")"
   cat >"$PLIST" <<EOF
@@ -107,8 +130,7 @@ cmd_install() {
   [[ -f "$ROOT/.env" ]] || cp "$ROOT/.env.example" "$ROOT/.env"
   case "$(os)" in
     linux)
-      mkdir -p "$(dirname "$UNIT_DST")"
-      ln -sfn "$UNIT_SRC" "$UNIT_DST"
+      write_unit
       systemctl --user daemon-reload
       systemctl --user enable "$UNIT"
       systemctl --user restart "$UNIT"
