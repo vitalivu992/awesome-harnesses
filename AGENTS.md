@@ -194,9 +194,12 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   only, "All" and the selected harness with name + count; ✎ = new conversation with the
   filter's harness), `ConversationView`
   (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
-  collapsed by default, global Show/Hide work), `Step` (thinking/note/tool rows; tool input shown
+  collapsed by default, global Show/Hide work; "Copy as markdown" under a final answer, shown while
+  its footer is hovered — `lib/clipboard.js` `copyText`, shared with the Resume popover), `Step` (thinking/note/tool rows; tool input shown
   as shell/diff/JSON, output on click), `ResumeButton`, `Markdown` (markdown-it + hljs + GitHub
-  alerts; mermaid lazy-loaded, `securityLevel: "strict"`, `html: false`).
+  alerts; mermaid lazy-loaded, `securityLevel: "strict"`, `html: false`; a drawn diagram gets a
+  "Copy image" button on hover: the SVG is drawn on a canvas at 2x over the nearest opaque
+  background, HTML labels get their computed font inlined, `clipboard.js` `copyImage` writes the PNG).
 - `lib/` — pure helpers with unit tests: `format.js` (`modelLabel`, dates, durations),
   `resume.js` (per-harness resume argv + bypass flag, or `noBypass` reason when the CLI has none;
   POSIX quoting), `tools.js` (tool icon/summary across the harnesses' tool names, incl. Codex
