@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react"
+import { copyText } from "../lib/clipboard.js"
 import { agentLabel, clockTime, duration, longDateTime, plural, statusMeta } from "../lib/format.js"
 import { atBottom, isWorking } from "../lib/live.js"
 import { Composer } from "./Composer.jsx"
@@ -80,6 +81,24 @@ function RunError({ run, onDismiss }) {
   )
 }
 
+/** Under the final answer: copies its markdown source; shown while the footer is hovered. */
+function AnswerFooter({ text }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    if (await copyText(text)) {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    }
+  }
+  return (
+    <div className="ah-msg__foot">
+      <button type="button" className="ah-copy-btn" onClick={copy} title="Copy the answer as markdown">
+        <i className={`fa-solid ${copied ? "fa-check" : "fa-copy"}`} aria-hidden="true"></i> {copied ? "Copied" : "Copy as markdown"}
+      </button>
+    </div>
+  )
+}
+
 /** `live`: the turn the agent is still working on. */
 function AssistantMessage({ entry, harness, index, expandAll, live }) {
   const [open, setOpen] = useState(expandAll)
@@ -123,6 +142,7 @@ function AssistantMessage({ entry, harness, index, expandAll, live }) {
             <Markdown docId={`turn-${index}`}>{entry.final}</Markdown>
           </div>
         ) : null}
+        {entry.final && !live ? <AnswerFooter text={entry.final} /> : null}
         {live ? (
           <p className="ah-turn-status ah-turn-status--live">
             <i className="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i> <WorkingWord />
