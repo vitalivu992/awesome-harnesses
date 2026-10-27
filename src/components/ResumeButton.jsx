@@ -1,27 +1,9 @@
 import { useEffect, useRef, useState } from "react"
+import { copyText } from "../lib/clipboard.js"
 import { bypassFlag, noBypassReason, resumeCommand } from "../lib/resume.js"
 import { HARNESSES, harnessName } from "../lib/format.js"
 import { readPrefs, writePref } from "../lib/prefs.js"
 import { useShells } from "./Shells.jsx"
-
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(text)
-    return true
-  } catch {
-    // Older browsers / non-secure origins: fall back to a hidden textarea.
-    const area = document.createElement("textarea")
-    area.value = text
-    area.setAttribute("readonly", "")
-    area.style.position = "fixed"
-    area.style.opacity = "0"
-    document.body.appendChild(area)
-    area.select()
-    const ok = document.execCommand("copy")
-    area.remove()
-    return ok
-  }
-}
 
 /**
  * "Resume" popover: the CLI command that continues the conversation, a
