@@ -50,6 +50,37 @@ test("copies the resume command, with bypass permissions", async ({ page, contex
   expect(await page.evaluate(() => navigator.clipboard.readText())).toContain("--dangerously-skip-permissions")
 })
 
+test("copies the final answer as markdown from its footer", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  await page.goto(`/?project=${encodeURIComponent(PROJECT)}&c=claude:11111111-aaaa-4bbb-8ccc-000000000001`)
+  const copy = page.locator("#ahChat .ah-copy-btn")
+  await expect(copy).toHaveCSS("opacity", "0")
+  await page.locator("#ahChat .ah-msg__foot").hover()
+  await expect(copy).toHaveCSS("opacity", "1")
+  await copy.click()
+  await expect(copy).toContainText("Copied")
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("## Done\n\nAdded `GET /health`.\n\n| Route | Status |\n|---|---|\n| /health | 200 |")
+})
+
+test("copies a mermaid diagram as a PNG image", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  await page.goto(`/?project=${encodeURIComponent(PROJECT)}&c=pi:pi-1`)
+  const diagram = page.locator("#ahChat .ah-diagram")
+  await expect(diagram.locator("svg")).toBeVisible()
+  const copy = diagram.locator(".ah-diagram__copy")
+  await diagram.hover()
+  await expect(copy).toHaveCSS("opacity", "1")
+  await copy.click()
+  await expect(copy).toContainText("Copied")
+  const image = await page.evaluate(async () => {
+    const [item] = await navigator.clipboard.read()
+    const bitmap = await createImageBitmap(await item.getType("image/png"))
+    return { types: item.types, width: bitmap.width, height: bitmap.height }
+  })
+  expect(image.types).toContain("image/png")
+  expect(image.width).toBeGreaterThan(image.height)
+})
+
 test("collapses the projects panel and filters by harness", async ({ page }) => {
   await page.goto(`/?project=${encodeURIComponent(PROJECT)}`)
   await page.getByRole("button", { name: "Collapse projects" }).click()

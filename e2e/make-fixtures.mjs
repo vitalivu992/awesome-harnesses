@@ -84,7 +84,7 @@ export function makeFixtures() {
       id: "a1",
       parentId: "u1",
       timestamp: "2026-10-17T08:00:03Z",
-      message: { role: "assistant", content: [{ type: "text", text: "It uses `http.ServeMux`." }], model: "gpt-5.6-luna", stopReason: "stop" },
+      message: { role: "assistant", content: [{ type: "text", text: "It uses `http.ServeMux`.\n\n```mermaid\nflowchart LR\n  req[Request] --> mux[ServeMux] --> h[Handler]\n```" }], model: "gpt-5.6-luna", stopReason: "stop" },
     },
   ])
 }
