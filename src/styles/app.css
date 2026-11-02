@@ -725,6 +725,27 @@ body {
   align-items: flex-start;
 }
 
+/* Prev / Next under a long conversation list. */
+.ah-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-top: 1px solid var(--borderColor-default, #d0d7de);
+}
+
+.ah-pager__range {
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ah-pager .ah-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* An error session: tinted, with a red mark that shows on hover. */
 .ah-conv.is-error {
   background: var(--bgColor-danger-muted, rgba(255, 129, 130, 0.1));
