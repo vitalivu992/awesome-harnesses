@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { filterConversations } from "../src/components/ConversationList.jsx"
+import { filterConversations, pageConversations, pageOf } from "../src/components/ConversationList.jsx"
 import { filterProjects, listedProjects, liveLabel, projectLive } from "../src/components/ProjectsPanel.jsx"
 import { workSummary } from "../src/components/ConversationView.jsx"
 import { splitConversationKey } from "../src/App.jsx"
@@ -15,6 +15,19 @@ describe("filters", () => {
     expect(filterConversations(convs, { text: "opus 5.5" }).map((c) => c.id)).toEqual(["a"])
     expect(filterConversations(convs, { text: "FEAT/" }).map((c) => c.id)).toEqual(["b"])
     expect(filterConversations(convs, {}).length).toBe(2)
+  })
+  it("pages conversations and finds the page of one", () => {
+    const many = Array.from({ length: 130 }, (_, i) => ({ id: `c${i}`, harness: "claude" }))
+    let p = pageConversations(many, 0)
+    expect([p.visible.length, p.page, p.pages, p.start, p.total]).toEqual([50, 0, 3, 0, 130])
+    p = pageConversations(many, 2)
+    expect([p.visible.length, p.start, p.visible[0].id]).toEqual([30, 100, "c100"])
+    expect(pageConversations(many, 9).page).toBe(2)
+    expect(pageConversations(many, -1).page).toBe(0)
+    expect(pageConversations(undefined, 0)).toEqual({ visible: [], page: 0, pages: 1, start: 0, total: 0 })
+    expect(pageOf(many, "claude:c49")).toBe(0)
+    expect(pageOf(many, "claude:c50")).toBe(1)
+    expect(pageOf(many, "codex:c50")).toBe(-1)
   })
   it("gives a project's live state and label, working first", () => {
     expect(projectLive({ running: 1, finished: 2 })).toBe("running")
