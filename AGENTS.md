@@ -192,7 +192,8 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   the header count is clicked; footer = `UserMenu`: `greeting` (format.js, by hour) + user + kebab menu with Settings, theme radio
   items and **Log out**, which asks in a `<dialog>`), `ConversationList` (harness filter: icons
   only, "All" and the selected harness with name + count; ✎ = new conversation with the
-  filter's harness), `ConversationView`
+  filter's harness; Prev/Next pages of 50 (`pageConversations`; a newly selected
+  conversation opens its page once, `pageOf`) — long lists lagged), `ConversationView`
   (user bubble right, agent left with `agentLabel` "Claude Code - Opus 5.5" / "Codex - GPT 5.5", `Work details`
   collapsed by default, global Show/Hide work; "Copy as markdown" under a final answer, shown while
   its footer is hovered — `lib/clipboard.js` `copyText`, shared with the Resume popover), `Step` (thinking/note/tool rows; tool input shown
