@@ -1,17 +1,17 @@
 // One-line descriptions and icons for agent tool calls. Each harness names
 // its tools differently: Bash (Claude Code), Shell (Cursor), exec_command /
-// shell (Codex), bash (pi, OpenCode, Kilo); Edit / StrReplace / apply_patch / edit…
+// shell (Codex), bash (pi, OpenCode, Kilo), shell_command (Codex, Command Code); Edit / StrReplace / apply_patch / edit…
 
 const ICONS = [
   [/^(bash|shell|run_terminal_cmd|bashoutput|killshell|monitor|exec_command|shell_command|write_stdin|exec|codemode)$/i, "fa-terminal"],
   [/^(read|read_file|notebookread|view_image)$/i, "fa-file-lines"],
-  [/^(edit|multiedit|write|strreplace|str_replace|edit_file|notebookedit|delete|apply_patch|patch|multi_edit)$/i, "fa-pen-to-square"],
+  [/^(edit|multiedit|write|write_file|strreplace|str_replace|edit_file|notebookedit|delete|apply_patch|patch|multi_edit)$/i, "fa-pen-to-square"],
   [/^(grep|glob|search|codebase_search|semanticsearch|file_search|ls|list|list_dir|find|tool_search)$/i, "fa-magnifying-glass"],
   [/^(webfetch|websearch|web_search|fetch)$/i, "fa-globe"],
   [/^(task|agent|subagent|sendmessage)$/i, "fa-robot"],
   [/^(todowrite|todo_write|taskcreate|taskupdate|update_plan|todoread)$/i, "fa-list-check"],
   [/^(skill)$/i, "fa-wand-magic-sparkles"],
-  [/^(askuserquestion|ask_question|request_user_input|question)$/i, "fa-circle-question"],
+  [/^(askuserquestion|ask_user_question|ask_question|request_user_input|question)$/i, "fa-circle-question"],
   [/^mcp/i, "fa-plug"],
 ]
 

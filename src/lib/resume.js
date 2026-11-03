@@ -22,6 +22,7 @@ const RESUME = {
     bypass: "",
     noBypass: "The Kilo TUI has no bypass flag (only non-interactive `kilo run` has one).",
   },
+  commandcode: { argv: (id) => ["cmdc", "--resume", id], bypass: "--yolo" },
 }
 
 /**

@@ -17,6 +17,8 @@ const (
 	Pi       = "pi"
 	OpenCode = "opencode"
 	Kilo     = "kilo"
+	// CommandCode: Command Code, whose CLI is cmdc.
+	CommandCode = "commandcode"
 )
 
 // Turn and conversation statuses.

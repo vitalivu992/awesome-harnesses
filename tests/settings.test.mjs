@@ -6,7 +6,7 @@ describe("normalizeSettings", () => {
     const s = normalizeSettings({ defaultHarness: "nope", harnesses: { claude: { models: [{ id: "opus" }, null, { x: 1 }], fast: "yes" } } })
     expect(s.defaultHarness).toBe("claude")
     expect(s.harnesses.claude).toEqual({ models: [{ id: "opus", effort: "" }], effort: "", fast: false, bypass: false })
-    expect(Object.keys(s.harnesses)).toEqual(["claude", "cursor", "codex", "pi", "opencode", "kilo"])
+    expect(Object.keys(s.harnesses)).toEqual(["claude", "cursor", "codex", "pi", "opencode", "kilo", "commandcode"])
   })
 })
 

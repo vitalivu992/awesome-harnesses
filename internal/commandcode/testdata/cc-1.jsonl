@@ -1,0 +1,18 @@
+{"type":"session","version":3,"id":"cc-1","timestamp":"2026-11-02T10:00:00.000Z","cwd":"/work/app"}
+{"type":"message","id":"u0","parentId":null,"timestamp":"2026-11-02T10:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"rewound prompt"}],"meta":{"source":"user"}}}
+{"type":"message","id":"u1","parentId":null,"timestamp":"2026-11-02T10:01:00.000Z","message":{"role":"user","content":[{"type":"text","text":"read the readme"}],"meta":{"source":"user"}}}
+{"type":"message","id":"n1","parentId":"u1","timestamp":"2026-11-02T10:01:00.500Z","message":{"role":"user","content":[{"type":"text","text":"Insufficient credits"}],"meta":{}}}
+{"type":"message","id":"u2","parentId":"n1","timestamp":"2026-11-02T10:02:00.000Z","message":{"role":"user","content":[{"type":"text","text":"read the readme"}],"meta":{"source":"user"}}}
+{"type":"message","id":"a1","parentId":"u2","timestamp":"2026-11-02T10:02:01.000Z","message":{"role":"assistant","content":[{"type":"thinking","thinking":"Read it.","signature":""},{"type":"text","text":"Reading."},{"type":"tool_use","id":"t1","name":"read_file","input":{"file_path":"/work/app/README.md"}}],"meta":{"source":"model"}},"model":"z-ai/glm-5.3-flash","effort":"high"}
+{"type":"message","id":"r1","parentId":"a1","timestamp":"2026-11-02T10:02:02.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t1","content":[{"type":"text","text":"# App"}]}],"meta":{"source":"tool"}}}
+{"type":"message","id":"a2","parentId":"r1","timestamp":"2026-11-02T10:02:03.000Z","message":{"role":"assistant","content":[{"type":"text","text":"It's called **App**."}],"meta":{"source":"model"}},"model":"z-ai/glm-5.3-flash","effort":"high"}
+{"type":"session_info","id":"s1","parentId":"a2","timestamp":"2026-11-02T10:02:04.000Z","name":"Readme check"}
+{"type":"compaction","id":"c1","parentId":"s1","timestamp":"2026-11-02T10:03:00.000Z","summary":"The user asked about the readme.","firstKeptEntryId":"a2","tokensBefore":1000}
+{"type":"model_change","id":"m1","parentId":"c1","timestamp":"2026-11-02T10:03:30.000Z","model":"claude-sonnet-5-5"}
+{"type":"message","id":"u3","parentId":"m1","timestamp":"2026-11-02T10:04:00.000Z","message":{"role":"user","content":[{"type":"text","text":"run the tests"}],"meta":{"source":"user"}}}
+{"type":"message","id":"a3","parentId":"u3","timestamp":"2026-11-02T10:04:01.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t2","name":"shell_command","input":{"command":"go test ./...","description":"Run tests"}}],"meta":{"source":"model"}}}
+{"type":"message","id":"r2","parentId":"a3","timestamp":"2026-11-02T10:04:05.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"t2","content":[{"type":"text","text":"FAIL"}],"is_error":true}],"meta":{"source":"tool"}}}
+{"type":"message","id":"n2","parentId":"r2","timestamp":"2026-11-02T10:04:06.000Z","message":{"role":"user","content":[{"type":"text","text":"Interrupted by user"}],"meta":{}}}
+{"type":"message","id":"h1","parentId":"n2","timestamp":"2026-11-02T10:04:07.000Z","message":{"role":"user","content":[{"type":"text","text":"stop hook says continue"}],"meta":{"source":"stop_hook","isAutomated":true}}}
+{"type":"message","id":"u4","parentId":"h1","timestamp":"2026-11-02T10:05:00.000Z","message":{"role":"user","content":[{"type":"text","text":"try again"}],"meta":{"source":"user"}}}
+{"type":"message","id":"a4","parentId":"u4","timestamp":"2026-11-02T10:05:01.000Z","message":{"role":"assistant","content":[{"type":"tool_use","id":"t3","name":"shell_command","input":{"command":"go test ./..."}}],"meta":{"source":"model"}}}

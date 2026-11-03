@@ -38,6 +38,11 @@ func TestBuild(t *testing.T) {
 				"--", "hi"}, "ses_1"},
 		{"kilo", Request{Harness: "kilo", Cwd: "/w", Prompt: "hi"},
 			[]string{"kilo", "run", "--format", "json", "--", "hi"}, ""},
+		{"command code new", Request{Harness: "commandcode", Cwd: "/w", Prompt: "hi", Model: "z-ai/glm-5.3-flash", Effort: "low", Bypass: true},
+			[]string{"cmdc", "-p", "--output-format", "json", "--trust", "--skip-onboarding", "--model", "z-ai/glm-5.3-flash",
+				"--effort", "low", "--yolo", "--", "hi"}, ""},
+		{"command code resume", Request{Harness: "commandcode", Session: "cc-1", Cwd: "/w", Prompt: "hi"},
+			[]string{"cmdc", "-p", "--output-format", "json", "--trust", "--skip-onboarding", "--resume", "cc-1", "--", "hi"}, "cc-1"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -140,13 +145,16 @@ func TestCommandsClaude(t *testing.T) {
 func TestCommandsOtherHarnesses(t *testing.T) {
 	root := t.TempDir()
 	d := Dirs{Home: root, Codex: filepath.Join(root, "codex"), Pi: filepath.Join(root, "pi"), OpenCode: filepath.Join(root, "oc"),
-		Claude: filepath.Join(root, "claude")}
+		Claude: filepath.Join(root, "claude"), CommandCode: filepath.Join(root, "cc")}
 	write(t, filepath.Join(d.Codex, "skills", "pw", "SKILL.md"), "---\nname: playwright\n---\n")
 	write(t, filepath.Join(d.Codex, "prompts", "review.md"), "Review $1 carefully")
 	write(t, filepath.Join(d.Pi, "agent", "prompts", "commit.md"), "x")
 	write(t, filepath.Join(d.Pi, "agent", "skills", "wiki", "SKILL.md"), "---\nname: llm-wiki\n---\n")
 	write(t, filepath.Join(d.OpenCode, "commands", "test.md"), "Run tests")
 	write(t, filepath.Join(d.Claude, "skills", "fix", "SKILL.md"), "---\nname: fix\n---\n")
+	write(t, filepath.Join(d.CommandCode, "commands", "ship.md"), "Ship it")
+	write(t, filepath.Join(d.CommandCode, "skills", "pong", "SKILL.md"), "---\nname: pong\n---\n")
+	write(t, filepath.Join(root, ".agents", "skills", "shared", "SKILL.md"), "---\nname: shared\n---\n")
 	// A symlinked commands folder is followed.
 	write(t, filepath.Join(root, "shared", "lint.md"), "Lint")
 	if err := os.Symlink(filepath.Join(root, "shared"), filepath.Join(d.OpenCode, "command")); err != nil {
@@ -154,9 +162,10 @@ func TestCommandsOtherHarnesses(t *testing.T) {
 	}
 
 	for harness, want := range map[string][]string{
-		"codex":    {"$playwright|user", "/prompts:review|user"},
-		"pi":       {"/commit|user", "/skill:llm-wiki|user"},
-		"opencode": {"/fix|user", "/lint|user", "/test|user"},
+		"codex":       {"$playwright|user", "/prompts:review|user", "$shared|user"},
+		"pi":          {"/commit|user", "/skill:llm-wiki|user"},
+		"opencode":    {"/fix|user", "/lint|user", "/test|user"},
+		"commandcode": {"/pong|user", "/shared|user", "/ship|user"},
 	} {
 		if got := inserts(Commands(harness, "", d)); !reflect.DeepEqual(got, want) {
 			t.Errorf("%s: got %q, want %q", harness, got, want)
@@ -172,6 +181,9 @@ func TestBuildExpandsCommands(t *testing.T) {
 	write(t, filepath.Join(d.OpenCode, "command", "test.md"), "Run tests")
 	write(t, filepath.Join(d.Cursor, "skills", "fix", "SKILL.md"), "---\nname: fix\n---\n")
 	write(t, filepath.Join(d.Claude, "skills", "fix", "SKILL.md"), "---\nname: fix\n---\n")
+	d.CommandCode = filepath.Join(root, "cc")
+	write(t, filepath.Join(d.CommandCode, "commands", "magic.md"), "Say BANANA-$ARGUMENTS")
+	write(t, filepath.Join(d.CommandCode, "skills", "pong", "SKILL.md"), "---\nname: pong\n---\n")
 
 	build := func(harness, prompt string) Plan {
 		t.Helper()
@@ -200,6 +212,13 @@ func TestBuildExpandsCommands(t *testing.T) {
 	if p := build("claude", "/fix the bug"); p.Argv[len(p.Argv)-1] != "/fix the bug" || len(p.Notes) != 0 {
 		t.Errorf("claude expands skills itself: %q", p.Argv)
 	}
+	// cmdc -p expands skills, not custom commands.
+	if p := build("commandcode", "/magic 7"); p.Argv[len(p.Argv)-1] != "Say BANANA-7" {
+		t.Errorf("command code template: %q", p.Argv)
+	}
+	if p := build("commandcode", "/pong"); p.Argv[len(p.Argv)-1] != "/pong" || len(p.Notes) != 0 {
+		t.Errorf("command code skill: %q %q", p.Argv, p.Notes)
+	}
 }
 
 func TestFillTemplate(t *testing.T) {
@@ -219,6 +238,12 @@ func TestModelParsers(t *testing.T) {
 	pi := parsePiModels([]byte("provider  model  context  max-out  thinking  images\nanthropic claude-x 200K 64K yes yes\nlocal tiny 8K 4K no no\n"))
 	if len(pi) != 2 || pi[0].ID != "anthropic/claude-x" || pi[0].Efforts != nil || pi[1].Efforts == nil {
 		t.Errorf("pi: %+v", pi)
+	}
+	cc := parseCommandCodeModels([]byte("\nAvailable models  ·  3 models\n\nOpen Source\n\nz-ai/glm-5.3-flash                fast GLM\n" +
+		"\nAnthropic\n\nclaude-sonnet-5-5                 best combo (recommended)\n\nPass the full id:\ncmd --model kimi-k2.5\n\n" +
+		"Docs:  https://commandcode.ai/docs\n\nDecision models (headless only)\n\ntypesafe/jev  typed questions\n"))
+	if len(cc) != 2 || cc[0].ID != "z-ai/glm-5.3-flash" || cc[0].Name != "fast GLM" || cc[1].ID != "claude-sonnet-5-5" {
+		t.Errorf("command code: %+v", cc)
 	}
 	oc := parseOpenCodeModels([]byte("opencode/a\n{\n  \"name\": \"A\",\n  \"variants\": {\"high\": {}, \"low\": {}}\n}\nopenai/b\n{\n  \"name\": \"B\"\n}\n"))
 	if len(oc) != 2 || oc[0].ID != "opencode/a" || !reflect.DeepEqual(oc[0].Efforts, []string{"low", "high"}) || oc[1].Name != "B" || oc[1].Efforts != nil {

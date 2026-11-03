@@ -30,6 +30,7 @@ describe("agentLabel", () => {
     expect(agentLabel("pi", "")).toBe("pi")
     expect(agentLabel("opencode", "zai/glm-5.3")).toBe("OpenCode - GLM 5.3")
     expect(agentLabel("kilo", "")).toBe("Kilo Code")
+    expect(agentLabel("commandcode", "z-ai/glm-5.3-flash")).toBe("Command Code - GLM 5.3 Flash")
   })
 })
 

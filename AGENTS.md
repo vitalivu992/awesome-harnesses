@@ -69,6 +69,14 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
 - `internal/pi` — pi sessions: entries form a tree via `parentId`; `activeBranch` walks from the
   last entry to the root. `toolCall` ↔ `toolResult` by id; status from `stopReason`;
   `bashExecution` and `custom_message` become events; title from the last `session_info.name`.
+- `internal/commandcode` — Command Code (`cmdc`), a pi fork: the same v3 session tree
+  (`activeBranch`), but Anthropic-style blocks (`tool_use` in the assistant message,
+  `tool_result` in the next user message, by `tool_use_id`). A user message's `meta.source`:
+  `user` = prompt, `tool` = results, none = a notice on the open turn ("Interrupted by user"
+  → aborted, else error with its text, e.g. "Insufficient credits"); `isMeta`/`isAutomated`
+  (stop hooks) skipped. No stop reason is written: a turn is done when its last assistant
+  message asked for no tool. `compaction` / `branch_summary` become events. Title from
+  `<id>.meta.json`, else the last `session_info` name.
 - `internal/opencode` — OpenCode and Kilo (same schema). `List` skips child (subagent) and
   archived sessions; `Read` builds turns from user messages (non-synthetic text parts) and
   assistant messages' reasoning/text/tool parts (tool `state` holds input, output/error, times).
@@ -78,7 +86,7 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   file or db path, project key, size, mtime) plus a `parse` case. Project path: Claude via the
   `cwd` in the newest transcript; Cursor by walking the filesystem with the folder slug
   (`resolveSlug`; `-` can stand for `/ - _ .` or space), then a Claude path with the same slug,
-  then `guessSlug` (deepest existing dir + rest); Codex/pi from their first line (memoized in
+  then `guessSlug` (deepest existing dir + rest); Codex/pi/Command Code from their first line (memoized in
   `heads`); OpenCode/Kilo from `session.directory`. Projects merge on that path; no path →
   `no-workspace`. `Project.Running` / `Finished` count conversations that are active with an `incomplete` / ended
   last turn (only active items are summarized, so listing stays cheap). `enrich` adds what the source lacks (cwd = project dir, Cursor resumability /
@@ -114,14 +122,16 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   `statusWriter.Unwrap` lets the upgrade hijack.
 - `internal/launch` — pure: `Build(Request, cmds, newID)` → `Plan` (argv, cwd, session, display
   `Command`, `Notes`) for `claude -p`, `codex exec [resume] --json`, `cursor-agent -p
-  --output-format stream-json --trust`, `pi -p`, `opencode|kilo run --format json`. The browser
+  --output-format stream-json --trust`, `pi -p`, `opencode|kilo run --format json`, `cmdc -p
+  --output-format json --trust --skip-onboarding`. The browser
   sends only structured fields (model/effort validated as tokens, never a leading `-`; the
   prompt goes after `--`). Claude and pi take a new id (`--session-id`); the others report it
   in their JSON output. `Harnesses` = CLI, efforts, fast mode, bypass flag per harness.
   `Commands(harness, cwd, Dirs)` lists slash commands and skills (Claude: user/project
   commands + skills, enabled plugins as `/plugin:<folder>`, account-synced skills as
   `/anthropic-skills:<name>`; Codex `$skill` + `/prompts:`; pi `/template` + `/skill:`; Cursor,
-  OpenCode, Kilo their folders); `expand` rewrites what the CLI won't expand itself (template
+  OpenCode, Kilo their folders; Command Code `.commandcode/commands` (expanded here: `cmdc -p`
+  doesn't) + `.commandcode/skills` and `.agents/skills` (native)); `expand` rewrites what the CLI won't expand itself (template
   text with `$ARGUMENTS`/`$1`, OpenCode/Kilo `--command`, skills → "use your skill" line).
   `Models` = settings suggestions (Claude aliases, Codex `models_cache.json` with per-model
   efforts, the other CLIs' model listings parsed).
@@ -129,7 +139,8 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   cross-site runs) checks a continued conversation in the catalog (its cwd wins; Cursor app
   chats refused; one running prompt per conversation → 409), builds the plan and starts the CLI
   in its own process group, stdin null. Stdout JSONL gives the new session id and error
-  events; the stderr tail is the error otherwise. `DELETE` = SIGINT to the group, SIGKILL
+  events (cmdc nests them: `{"type":"event","event":{…}}`; only its `run_error` and a `result`
+  with `subtype: "error"` count — `tool_errored` is a tool's failure); the stderr tail is the error otherwise. `DELETE` = SIGINT to the group, SIGKILL
   after 5 s. Ended runs stay listed 15 min. CLIs are looked up in `LAUNCH_PATH`, else the login
   shell's PATH (`$SHELL -l -i -c`, cached 5 min) — a systemd service's PATH lacks nvm and
   `~/.local/bin`; found paths are made absolute (`cmd.Dir` would resolve a relative one).

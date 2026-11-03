@@ -1,4 +1,4 @@
-// Writes a fake home for e2e: one project used from Claude Code, Cursor, Codex and pi, an
+// Writes a fake home for e2e: one project used from Claude Code, Cursor, Codex, pi and Command Code, an
 // older Codex session in a folder that no longer exists (hidden by default), a Claude skill and
 // command, and a fake `claude` CLI in bin/ (the server's LAUNCH_PATH) for the prompts sent from the UI.
 // Run by playwright.config.js before it starts the server.
@@ -87,6 +87,22 @@ export function makeFixtures() {
       message: { role: "assistant", content: [{ type: "text", text: "It uses `http.ServeMux`.\n\n```mermaid\nflowchart LR\n  req[Request] --> mux[ServeMux] --> h[Handler]\n```" }], model: "gpt-5.6-luna", stopReason: "stop" },
     },
   ])
+  const cc = join(HOME, ".commandcode", "projects", slug(PROJECT).toLowerCase())
+  write(join(cc, "cc-1.jsonl"), [
+    { type: "session", version: 3, id: "cc-1", timestamp: "2026-10-16T08:00:00Z", cwd: PROJECT },
+    { type: "message", id: "u1", parentId: null, timestamp: "2026-10-16T08:00:01Z", message: { role: "user", content: [{ type: "text", text: "Count the Go files" }], meta: { source: "user" } } },
+    {
+      type: "message",
+      id: "a1",
+      parentId: "u1",
+      timestamp: "2026-10-16T08:00:02Z",
+      message: { role: "assistant", content: [{ type: "tool_use", id: "t1", name: "shell_command", input: { command: "ls *.go | wc -l" } }], meta: { source: "model" } },
+      model: "z-ai/glm-5.3-flash",
+    },
+    { type: "message", id: "r1", parentId: "a1", timestamp: "2026-10-16T08:00:03Z", message: { role: "user", content: [{ type: "tool_result", tool_use_id: "t1", content: [{ type: "text", text: "12" }] }], meta: { source: "tool" } } },
+    { type: "message", id: "a2", parentId: "r1", timestamp: "2026-10-16T08:00:04Z", message: { role: "assistant", content: [{ type: "text", text: "There are **12** Go files." }], meta: { source: "model" } }, model: "z-ai/glm-5.3-flash" },
+  ])
+  write(join(cc, "cc-1.meta.json"), [{ title: "Go file count" }])
 }
 
 // Like claude -p: appends the prompt to the session's transcript (in the folder it runs in), then

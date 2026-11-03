@@ -38,7 +38,7 @@ var claudeModels = []Model{
 
 // Models lists the models a harness offers: Claude's aliases, Codex's model
 // cache, or what the CLI lists (cursor-agent models, pi --list-models,
-// opencode / kilo models --verbose).
+// opencode / kilo models --verbose, cmdc --list-models).
 func Models(ctx context.Context, harness string, d Dirs, run Runner) ([]Model, error) {
 	switch harness {
 	case conv.Claude:
@@ -57,6 +57,12 @@ func Models(ctx context.Context, harness string, d Dirs, run Runner) ([]Model, e
 			return nil, err
 		}
 		return parsePiModels(out), nil
+	case conv.CommandCode:
+		out, err := run(ctx, "cmdc", "--list-models")
+		if err != nil {
+			return nil, err
+		}
+		return parseCommandCodeModels(out), nil
 	case conv.OpenCode, conv.Kilo:
 		out, err := run(ctx, harness, "models", "--verbose")
 		if err != nil {
@@ -138,6 +144,24 @@ func parsePiModels(out []byte) []Model {
 			m.Efforts = []string{}
 		}
 		models = append(models, m)
+	}
+	return models
+}
+
+// cmdc --list-models: "<id>   <description>" rows under provider headings,
+// then usage hints ("cmd --model kimi-k2.5") and a "Decision models
+// (headless only)" section, which are not offered.
+func parseCommandCodeModels(out []byte) []Model {
+	var models []Model
+	for _, line := range strings.Split(string(out), "\n") {
+		if strings.HasPrefix(line, "Decision models") {
+			break
+		}
+		id, desc, ok := strings.Cut(line, "  ")
+		if !ok || strings.ContainsAny(id, " \t") || strings.HasSuffix(id, ":") || !modelRe.MatchString(id) {
+			continue
+		}
+		models = append(models, Model{ID: id, Name: strings.TrimSpace(desc)})
 	}
 	return models
 }

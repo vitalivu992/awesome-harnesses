@@ -95,6 +95,11 @@ func setup(t *testing.T) (*Catalog, string) {
 	write(t, filepath.Join(codexDir, "session_index.jsonl"), `{"id":"cx1","thread_name":"Renamed in Codex"}`+"\n")
 	piDir := filepath.Join(root, ".pi")
 	write(t, filepath.Join(piDir, "agent", "sessions", "--x--", "2026_p1.jsonl"), fmt.Sprintf(piSession, project))
+	ccDir := filepath.Join(root, ".commandcode")
+	ccProject := filepath.Join(ccDir, "projects", "x-my-app")
+	write(t, filepath.Join(ccProject, "cc1.jsonl"), fmt.Sprintf(ccSession, project))
+	write(t, filepath.Join(ccProject, "cc1.meta.json"), `{"title":"Titled by Command Code"}`)
+	write(t, filepath.Join(ccProject, "cc1.checkpoints.jsonl"), `{"id":"k1","turnNumber":1,"prompt":"hello"}`+"\n")
 	dbs := map[string]string{}
 	for _, h := range []string{conv.OpenCode, conv.Kilo} {
 		dbs[h] = filepath.Join(root, h, h+".db")
@@ -112,7 +117,7 @@ func setup(t *testing.T) (*Catalog, string) {
 	}
 	return New(Config{
 		ClaudeDir: claudeDir, CursorDir: cursorDir, CodexDir: codexDir, PiDir: piDir,
-		OpenCodeDB: dbs[conv.OpenCode], KiloDB: dbs[conv.Kilo], ActiveWindow: time.Minute,
+		OpenCodeDB: dbs[conv.OpenCode], KiloDB: dbs[conv.Kilo], CommandCodeDir: ccDir, ActiveWindow: time.Minute,
 	}), project
 }
 
@@ -124,6 +129,11 @@ const codexRollout = `{"timestamp":"2026-10-20T10:00:00Z","type":"session_meta",
 const piSession = `{"type":"session","id":"p1","timestamp":"2026-10-20T10:00:00Z","cwd":%q}
 {"type":"message","id":"u1","parentId":null,"timestamp":"2026-10-20T10:00:01Z","message":{"role":"user","content":[{"type":"text","text":"hello pi"}]}}
 {"type":"message","id":"a1","parentId":"u1","timestamp":"2026-10-20T10:00:02Z","message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"stopReason":"stop"}}
+`
+
+const ccSession = `{"type":"session","version":3,"id":"cc1","timestamp":"2026-10-20T10:00:00Z","cwd":%q}
+{"type":"message","id":"u1","parentId":null,"timestamp":"2026-10-20T10:00:01Z","message":{"role":"user","content":[{"type":"text","text":"hello cmdc"}],"meta":{"source":"user"}}}
+{"type":"message","id":"a1","parentId":"u1","timestamp":"2026-10-20T10:00:02Z","message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"meta":{"source":"model"}},"model":"z-ai/glm-5.3-flash"}
 `
 
 func TestProjectsMergeHarnesses(t *testing.T) {
@@ -140,7 +150,7 @@ func TestProjectsMergeHarnesses(t *testing.T) {
 			gone = &projects[i]
 		}
 	}
-	want := map[string]int{"claude": 2, "cursor": 2, "codex": 1, "pi": 1, "opencode": 1, "kilo": 1}
+	want := map[string]int{"claude": 2, "cursor": 2, "codex": 1, "pi": 1, "opencode": 1, "kilo": 1, "commandcode": 1}
 	if mine == nil || mine.Name != "my_app" || !mine.Exists || fmt.Sprint(mine.Counts) != fmt.Sprint(want) {
 		t.Fatalf("my_app = %+v, want counts %v (the Codex subagent session is left out)", mine, want)
 	}
@@ -190,8 +200,8 @@ func TestConversationsEnrichCursor(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sums) != 7 {
-		t.Fatalf("conversations = %d, want 7 (the empty Claude session is hidden)", len(sums))
+	if len(sums) != 8 {
+		t.Fatalf("conversations = %d, want 8 (the empty Claude session is hidden)", len(sums))
 	}
 	byID := map[string]conv.Summary{}
 	for _, s := range sums {
@@ -223,6 +233,9 @@ func TestConversationsEnrichCursor(t *testing.T) {
 	if s := byID["p1"]; s.Harness != conv.Pi || s.Title != "hello pi" {
 		t.Fatalf("p1 = %+v", s)
 	}
+	if s := byID["cc1"]; s.Harness != conv.CommandCode || s.Title != "Titled by Command Code" || s.Cwd != project || !s.Resumable {
+		t.Fatalf("cc1 = %+v (title from the meta file)", s)
+	}
 	if s := byID["ses_1"]; s.Title != "Fix the build" || s.Turns != 2 {
 		t.Fatalf("ses_1 = %+v", s)
 	}
@@ -248,8 +261,8 @@ func TestConversation(t *testing.T) {
 			t.Errorf("Conversation(%q) err = %v", id, err)
 		}
 	}
-	for _, h := range []string{conv.Codex, conv.Pi, conv.OpenCode, conv.Kilo} {
-		id := map[string]string{conv.Codex: "cx1", conv.Pi: "p1", conv.OpenCode: "ses_1", conv.Kilo: "ses_1"}[h]
+	for _, h := range []string{conv.Codex, conv.Pi, conv.OpenCode, conv.Kilo, conv.CommandCode} {
+		id := map[string]string{conv.Codex: "cx1", conv.Pi: "p1", conv.OpenCode: "ses_1", conv.Kilo: "ses_1", conv.CommandCode: "cc1"}[h]
 		full, err := c.Conversation(h, id)
 		if err != nil || full.Harness != h || full.ProjectPath != project || len(full.Entries) == 0 {
 			t.Errorf("Conversation(%s, %s) = %+v, %v", h, id, full, err)

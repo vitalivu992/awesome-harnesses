@@ -12,13 +12,14 @@ import (
 
 	"awesome-harness/internal/claude"
 	"awesome-harness/internal/codex"
+	"awesome-harness/internal/commandcode"
 	"awesome-harness/internal/conv"
 	"awesome-harness/internal/cursor"
 	"awesome-harness/internal/opencode"
 	"awesome-harness/internal/pi"
 )
 
-// header is what a Codex or pi file's first line says: its id and cwd.
+// header is what a Codex, pi or Command Code file's first line says: its id and cwd.
 type header struct {
 	id   string
 	cwd  string
@@ -245,6 +246,49 @@ func (c *Catalog) piItems() []item {
 	return out
 }
 
+// Command Code: ~/.commandcode/projects/<slug>/<id>.jsonl (beside it
+// <id>.meta.json and <id>.checkpoints.jsonl); the header line names the id
+// and cwd.
+func (c *Catalog) commandCodeItems() []item {
+	if c.cfg.CommandCodeDir == "" {
+		return nil
+	}
+	root := filepath.Join(c.cfg.CommandCodeDir, "projects")
+	dirs, err := os.ReadDir(root)
+	if err != nil {
+		return nil
+	}
+	var out []item
+	for _, d := range dirs {
+		if !d.IsDir() {
+			continue
+		}
+		files, _ := os.ReadDir(filepath.Join(root, d.Name()))
+		for _, f := range files {
+			name := f.Name()
+			if f.IsDir() || !strings.HasSuffix(name, ".jsonl") || strings.HasSuffix(name, ".checkpoints.jsonl") {
+				continue
+			}
+			path := filepath.Join(root, d.Name(), name)
+			st, ok := statFile(path)
+			if !ok {
+				continue
+			}
+			h := c.headerOf(path, func() header {
+				hd, err := commandcode.ReadHeader(path)
+				if err != nil {
+					return header{skip: true}
+				}
+				return header{id: hd.ID, cwd: hd.Cwd}
+			})
+			if !h.skip {
+				out = append(out, item{harness: conv.CommandCode, id: h.id, path: path, key: keyForPath(h.cwd), size: st.Size(), mtime: st.ModTime()})
+			}
+		}
+	}
+	return out
+}
+
 // db returns a shared read-only handle on an OpenCode/Kilo database, or nil
 // when it doesn't exist.
 func (c *Catalog) db(path string) *sql.DB {
@@ -296,6 +340,8 @@ func (c *Catalog) parse(it item) (*conv.Conversation, error) {
 		full, err = codex.ParseFile(it.path)
 	case conv.Pi:
 		full, err = pi.ParseFile(it.path)
+	case conv.CommandCode:
+		full, err = commandcode.ParseFile(it.path)
 	case conv.OpenCode, conv.Kilo:
 		db := c.db(it.path)
 		if db == nil {

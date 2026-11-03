@@ -102,6 +102,30 @@ func TestSessionFromJSONEvents(t *testing.T) {
 	}
 }
 
+func TestCommandCodeEvents(t *testing.T) {
+	m, bin, work := newManager(t)
+	fakeCLI(t, bin, "cmdc", `echo '{"type":"event","event":{"type":"run_start","sessionId":"cc-9"}}'; `+
+		`echo '{"type":"event","event":{"type":"tool_errored","toolCallId":"t1","error":"Blocked"}}'; `+
+		`echo '{"type":"result","subtype":"success","sessionId":"cc-9"}'`)
+	info, err := m.Start(launch.Request{Harness: "commandcode", Cwd: work, Prompt: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A tool's error is not the run's.
+	if end := wait(t, m, info.ID); end.Session != "cc-9" || end.Error != "" {
+		t.Errorf("ended: %+v", end)
+	}
+	fakeCLI(t, bin, "cmdc", `echo '{"type":"event","event":{"type":"run_start","sessionId":"cc-10"}}'; `+
+		`echo '{"type":"result","subtype":"error","sessionId":"cc-10","error":"Insufficient credits"}'`)
+	info, err = m.Start(launch.Request{Harness: "commandcode", Cwd: work, Prompt: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if end := wait(t, m, info.ID); end.Session != "cc-10" || end.Error != "Insufficient credits" {
+		t.Errorf("ended: %+v", end)
+	}
+}
+
 func TestFailures(t *testing.T) {
 	m, bin, work := newManager(t)
 	fakeCLI(t, bin, "codex", `echo '{"type":"turn.failed","error":{"message":"usage limit reached"}}'; exit 1`)
@@ -203,7 +227,7 @@ func TestHTTP(t *testing.T) {
 		Harnesses []harnessInfo `json:"harnesses"`
 	}
 	json.Unmarshal(rec.Body.Bytes(), &hs)
-	if len(hs.Harnesses) != 6 || hs.Harnesses[0].Found != filepath.Join(bin, "claude") || hs.Harnesses[1].Found != "" {
+	if len(hs.Harnesses) != 7 || hs.Harnesses[0].Found != filepath.Join(bin, "claude") || hs.Harnesses[1].Found != "" {
 		t.Errorf("harnesses %s", rec.Body)
 	}
 	if rec := do("GET", "/api/harnesses/claude/models", nil); !strings.Contains(rec.Body.String(), `"opus"`) {

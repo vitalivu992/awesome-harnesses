@@ -1,5 +1,5 @@
 // Command server serves the Awesome Harnesses UI and its read-only API over
-// the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo),
+// the local agent conversations (Claude Code, Cursor, Codex, pi, OpenCode, Kilo, Command Code),
 // the terminal panel's shells, and the runs that send prompts to the harness CLIs.
 package main
 
@@ -27,7 +27,7 @@ import (
 // serverVars are the settings this server reads (often from .env via the
 // systemd unit); the shells and harness CLIs it starts don't inherit them.
 var serverVars = []string{"HOST", "PORT", "PAM_SERVICE", "AUTH_DISABLED", "CLAUDE_DIR", "CURSOR_DIR",
-	"CURSOR_LOGS_DIR", "CODEX_DIR", "PI_DIR", "OPENCODE_DB", "KILO_DB", "LAUNCH_PATH"}
+	"CURSOR_LOGS_DIR", "CODEX_DIR", "PI_DIR", "OPENCODE_DB", "KILO_DB", "COMMANDCODE_DIR", "LAUNCH_PATH"}
 
 func env(name, fallback string) string {
 	if v := strings.TrimSpace(os.Getenv(name)); v != "" {
@@ -45,6 +45,7 @@ func main() {
 	cfg.PiDir = env("PI_DIR", cfg.PiDir)
 	cfg.OpenCodeDB = env("OPENCODE_DB", cfg.OpenCodeDB)
 	cfg.KiloDB = env("KILO_DB", cfg.KiloDB)
+	cfg.CommandCodeDir = env("COMMANDCODE_DIR", cfg.CommandCodeDir)
 
 	// Every /api/* route but the login ones needs a session: the password is
 	// checked by the OS, as for a desktop login (PAM_SERVICE: Linux and macOS).
@@ -73,6 +74,7 @@ func main() {
 	cat := catalog.New(cfg)
 	dirs := launch.DefaultDirs()
 	dirs.Claude, dirs.Cursor, dirs.Codex, dirs.Pi = cfg.ClaudeDir, cfg.CursorDir, cfg.CodexDir, cfg.PiDir
+	dirs.CommandCode = cfg.CommandCodeDir
 	prompts := &runs.Manager{Catalog: cat, Dirs: dirs, Env: shellEnv(), Path: env("LAUNCH_PATH", "")}
 
 	mux := http.NewServeMux()
@@ -91,8 +93,8 @@ func main() {
 		log.Printf("warning: the embedded web bundle has no index.html — run `make web` and rebuild")
 	}
 	log.Printf("listening on http://%s", addr)
-	log.Printf("reading Claude Code %s, Cursor %s, Codex %s, pi %s, OpenCode %s, Kilo %s",
-		cfg.ClaudeDir, cfg.CursorDir, cfg.CodexDir, cfg.PiDir, cfg.OpenCodeDB, cfg.KiloDB)
+	log.Printf("reading Claude Code %s, Cursor %s, Codex %s, pi %s, OpenCode %s, Kilo %s, Command Code %s",
+		cfg.ClaudeDir, cfg.CursorDir, cfg.CodexDir, cfg.PiDir, cfg.OpenCodeDB, cfg.KiloDB, cfg.CommandCodeDir)
 	srv := &http.Server{
 		Addr:              addr,
 		Handler:           logRequests(gzipJSON(login.Guard(mux))),

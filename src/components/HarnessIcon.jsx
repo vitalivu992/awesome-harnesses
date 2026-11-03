@@ -7,6 +7,7 @@ const ICONS = {
   pi: "/agent-icons/pi.svg",
   opencode: "/agent-icons/opencode.svg",
   kilo: "/agent-icons/kilo.svg",
+  commandcode: "/agent-icons/commandcode.svg",
 }
 
 /** The harness logo; `size` in px. */

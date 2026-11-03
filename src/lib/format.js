@@ -8,6 +8,7 @@ export const HARNESSES = {
   pi: { id: "pi", name: "pi", cli: "pi" },
   opencode: { id: "opencode", name: "OpenCode", cli: "opencode" },
   kilo: { id: "kilo", name: "Kilo Code", cli: "kilo" },
+  commandcode: { id: "commandcode", name: "Command Code", cli: "cmdc" },
 }
 
 export const HARNESS_IDS = Object.keys(HARNESSES)

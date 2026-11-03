@@ -21,6 +21,8 @@ type Dirs struct {
 	Pi       string // ~/.pi
 	OpenCode string // ~/.config/opencode
 	Kilo     string // ~/.config/kilo
+	// CommandCode: ~/.commandcode
+	CommandCode string
 }
 
 // DefaultDirs uses the standard locations.
@@ -35,19 +37,20 @@ func DefaultDirs() Dirs {
 		codex = filepath.Join(home, ".codex")
 	}
 	return Dirs{
-		Home:     home,
-		Claude:   filepath.Join(home, ".claude"),
-		Cursor:   filepath.Join(home, ".cursor"),
-		Codex:    codex,
-		Pi:       filepath.Join(home, ".pi"),
-		OpenCode: filepath.Join(config, "opencode"),
-		Kilo:     filepath.Join(config, "kilo"),
+		Home:        home,
+		Claude:      filepath.Join(home, ".claude"),
+		Cursor:      filepath.Join(home, ".cursor"),
+		Codex:       codex,
+		Pi:          filepath.Join(home, ".pi"),
+		OpenCode:    filepath.Join(config, "opencode"),
+		Kilo:        filepath.Join(config, "kilo"),
+		CommandCode: filepath.Join(home, ".commandcode"),
 	}
 }
 
 // How a command reaches the agent.
 const (
-	sendNative   = "native"   // the CLI expands it itself (claude -p, pi -p, codex $skill)
+	sendNative   = "native"   // the CLI expands it itself (claude -p, pi -p, codex $skill, cmdc -p skills)
 	sendTemplate = "template" // a markdown prompt template: expanded here
 	sendCommand  = "command"  // opencode / kilo run --command <name>
 	sendSkill    = "skill"    // a skill the CLI doesn't expand: an instruction to use it
@@ -103,6 +106,14 @@ func Commands(harness, cwd string, d Dirs) []Command {
 		add(skills(proj(".pi/skills"), "/skill:", "project", sendNative)...)
 		add(templates(filepath.Join(d.Pi, "agent", "prompts"), "/", "user", sendNative, false)...)
 		add(skills(filepath.Join(d.Pi, "agent", "skills"), "/skill:", "user", sendNative)...)
+	case conv.CommandCode:
+		// cmdc -p expands skills itself, not custom commands.
+		add(templates(proj(".commandcode/commands"), "/", "project", sendTemplate, false)...)
+		add(skills(proj(".commandcode/skills"), "/", "project", sendNative)...)
+		add(skills(proj(".agents/skills"), "/", "project", sendNative)...)
+		add(templates(filepath.Join(d.CommandCode, "commands"), "/", "user", sendTemplate, false)...)
+		add(skills(filepath.Join(d.CommandCode, "skills"), "/", "user", sendNative)...)
+		add(skills(filepath.Join(d.Home, ".agents", "skills"), "/", "user", sendNative)...)
 	case conv.OpenCode, conv.Kilo:
 		dot, cfg := ".opencode", d.OpenCode
 		if harness == conv.Kilo {

@@ -1,7 +1,7 @@
 # Awesome Harnesses
 
 A viewer for local data from **Claude Code**, **Cursor**, **Codex**, **pi**,
-**OpenCode**, and **Kilo Code**. Awesome Harnesses is a tool for viewing data from these
+**OpenCode**, **Kilo Code**, and **Command Code**. Awesome Harnesses is a tool for viewing data from these
 coding-agent harnesses, not a harness itself. It reads their transcript files and databases
 without writing to them.
 
@@ -60,6 +60,7 @@ Building:
 | `PI_DIR` | `~/.pi` | |
 | `OPENCODE_DB` | `$XDG_DATA_HOME/opencode/opencode.db` (`~/.local/share/…`) | |
 | `KILO_DB` | `$XDG_DATA_HOME/kilo/kilo.db` (`~/.local/share/…`) | |
+| `COMMANDCODE_DIR` | `~/.commandcode` | |
 | `LAUNCH_PATH` | your login shell's `PATH` | Where the harness CLIs are looked up for prompts sent from the UI. By default the server asks `$SHELL -l -i` once every few minutes, so CLIs installed with nvm or into `~/.local/bin` are found from the service too. |
 
 A harness that isn't installed simply has no local data to show.
@@ -111,7 +112,7 @@ in memory). A browser that restores the last session on start also restores this
   conversation; Esc or × closes it), saved in this browser. The default harness for **New**,
   then per harness: the models the prompt box offers, in order (suggestions from the CLI:
   Claude's aliases, Codex's model cache, `cursor-agent models`, `pi --list-models`,
-  `opencode`/`kilo models`), each with its thinking effort (the values that model supports
+  `opencode`/`kilo models`, `cmdc --list-models`), each with its thinking effort (the values that model supports
   where the CLI says so); the effort of the default model; **Fast mode** (Claude Code, Codex;
   off by default); **Bypass permissions** (a prompt sent from here can't ask for approval);
   and a **command preview** of what a new conversation would run with those settings.
@@ -149,6 +150,7 @@ Resume commands:
 | pi | `cd <cwd> && pi --session <session id>` | — (pi doesn't ask for permissions) |
 | OpenCode | `cd <dir> && opencode --session <session id>` | `--auto` |
 | Kilo Code | `cd <dir> && kilo --session <session id>` | — (only non-interactive `kilo run` has one) |
+| Command Code | `cd <cwd> && cmdc --resume <session id>` | `--yolo` |
 
 Prompts sent from the UI (the server builds the command; the preview shows it):
 
@@ -159,28 +161,30 @@ Prompts sent from the UI (the server builds the command; the preview shows it):
 | Codex | `codex exec --json --skip-git-repo-check` / `codex exec resume … <id>` | `--model`, `-c model_reasoning_effort=…`, `-c service_tier="fast"` | `$skill` mentions (Codex expands them); `/prompts:name` is expanded by the server |
 | pi | `pi -p --session-id <new uuid>` / `--session <id>` | `--model`, `--thinking` | `/template` and `/skill:name`: pi expands them |
 | OpenCode / Kilo | `opencode run --format json` (`--session <id>`) | `--model`, `--variant` | commands are sent as `--command <name>`; skills become an instruction |
+| Command Code | `cmdc -p --output-format json --trust --skip-onboarding` (`--resume <id>`) | `--model`, `--effort` | `/skill`: cmdc expands it; `.commandcode/commands` templates are expanded by the server |
 
 Each runs in the conversation's folder (the project's for a new one), with the bypass flag of
-the resume table when it is on (Kilo: `kilo run --auto`). The id of a new Codex, Cursor or OpenCode/Kilo conversation
-comes from the CLI's JSON output.
+the resume table when it is on (Kilo: `kilo run --auto`). The id of a new Codex, Cursor, OpenCode/Kilo or Command Code
+conversation comes from the CLI's JSON output.
 
 ## What is read
 
-| | Claude Code | Cursor | Codex | pi | OpenCode / Kilo Code |
-|---|---|---|---|---|---|
-| Where | `~/.claude/projects/<slug>/<session>.jsonl` | `~/.cursor/projects/<slug>/agent-transcripts/<id>/<id>.jsonl` (IDE and CLI) | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | `~/.pi/agent/sessions/--<slug>--/*.jsonl` | `session` / `message` / `part` tables of `opencode.db` / `kilo.db` (SQLite) |
-| Project path | `cwd` on each message | folder slug matched against the filesystem | `session_meta.cwd` | session header `cwd` | `session.directory` |
-| Title | `/rename` title, agent name, AI title, else first prompt | first prompt | thread name (`session_index.jsonl`), else first prompt | `/name`, else first prompt | session title (unless the default "New session - …"), else first prompt |
-| Model | per message | cursor-agent chat store; app chats: per turn from the Cursor server logs (only as old as the log folders Cursor keeps); else `~/.cursor/ai-tracking/ai-code-tracking.db`, else unknown | `turn_context` | per message | per message |
-| Timestamps | every message and tool result | the `<timestamp>` some prompts carry, turn start/end from the Cursor server logs, chat store creation time, file times | every line | every entry | every message and part |
-| Tool output | yes | not recorded by Cursor | yes | yes | yes |
-| Status | `stop_reason`, interrupts, API errors | `turn_ended` | `task_complete`, `turn_aborted`, `error` | `stopReason` | message `error`, `finish` |
-| Resumable | yes | only chats with a cursor-agent chat store (badge **CLI**); other chats show **App**: open them in Cursor | yes | yes | yes |
+| | Claude Code | Cursor | Codex | pi | OpenCode / Kilo Code | Command Code |
+|---|---|---|---|---|---|---|
+| Where | `~/.claude/projects/<slug>/<session>.jsonl` | `~/.cursor/projects/<slug>/agent-transcripts/<id>/<id>.jsonl` (IDE and CLI) | `~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl` | `~/.pi/agent/sessions/--<slug>--/*.jsonl` | `session` / `message` / `part` tables of `opencode.db` / `kilo.db` (SQLite) | `~/.commandcode/projects/<slug>/<id>.jsonl` + `<id>.meta.json` |
+| Project path | `cwd` on each message | folder slug matched against the filesystem | `session_meta.cwd` | session header `cwd` | `session.directory` | session header `cwd` |
+| Title | `/rename` title, agent name, AI title, else first prompt | first prompt | thread name (`session_index.jsonl`), else first prompt | `/name`, else first prompt | session title (unless the default "New session - …"), else first prompt | meta file title (generated or `/rename`), else `-n` name, else first prompt |
+| Model | per message | cursor-agent chat store; app chats: per turn from the Cursor server logs (only as old as the log folders Cursor keeps); else `~/.cursor/ai-tracking/ai-code-tracking.db`, else unknown | `turn_context` | per message | per message | per message |
+| Timestamps | every message and tool result | the `<timestamp>` some prompts carry, turn start/end from the Cursor server logs, chat store creation time, file times | every line | every entry | every message and part | every entry |
+| Tool output | yes | not recorded by Cursor | yes | yes | yes | yes |
+| Status | `stop_reason`, interrupts, API errors | `turn_ended` | `task_complete`, `turn_aborted`, `error` | `stopReason` | message `error`, `finish` | notices ("Insufficient credits", "Interrupted by user"); else done when the last answer asked for no tool |
+| Resumable | yes | only chats with a cursor-agent chat store (badge **CLI**); other chats show **App**: open them in Cursor | yes | yes | yes | yes |
 
 Left out: subagent sessions (Claude Code / Cursor `subagents/`, Codex sessions spawned by
 another, OpenCode/Kilo child sessions) — their result appears as the `Task`/`Agent` tool
 output in the parent conversation; archived OpenCode/Kilo sessions; sessions with no prompt.
-pi sessions are trees (rewinds branch them): the branch ending at the last entry is shown.
+pi and Command Code sessions are trees (rewinds branch them): the branch ending at the last
+entry is shown.
 
 ## Develop
 

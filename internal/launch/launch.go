@@ -1,6 +1,6 @@
 // Package launch builds the command lines that send a prompt to a harness
 // CLI without its interactive UI (claude -p, codex exec, cursor-agent -p,
-// pi -p, opencode run, kilo run): in a new conversation or continuing one.
+// pi -p, opencode run, kilo run, cmdc -p): in a new conversation or continuing one.
 // The browser only sends structured settings (model, effort, fast mode,
 // bypass); the argv is always built here, so the preview the settings show is
 // exactly what runs.
@@ -49,6 +49,9 @@ var Harnesses = []Harness{
 	{ID: conv.Kilo, CLI: "kilo", Efforts: []string{"minimal", "low", "medium", "high", "xhigh", "max"},
 		EffortNote: "Sent as the model variant; which ones exist depends on the provider.", FastNote: "Kilo has no fast mode.",
 		Bypass: "--auto"},
+	{ID: conv.CommandCode, CLI: "cmdc", Efforts: []string{"low", "medium", "high"},
+		EffortNote: "Which efforts a model takes depends on the model.", FastNote: "Command Code has no fast mode.",
+		Bypass: "--yolo"},
 }
 
 // Find returns the harness with that id.
@@ -200,6 +203,17 @@ func Build(req Request, cmds []Command, newID func() string) (Plan, error) {
 		}
 		a = appendIf(a, "--model", req.Model)
 		a = appendIf(a, "--thinking", req.Effort)
+		a = append(a, "--", prompt)
+	case conv.CommandCode:
+		// --trust: a headless run can't answer the "trust this folder?" prompt;
+		// --skip-onboarding: nor the taste onboarding.
+		a = []string{"cmdc", "-p", "--output-format", "json", "--trust", "--skip-onboarding"}
+		a = appendIf(a, "--resume", req.Session)
+		a = appendIf(a, "--model", req.Model)
+		a = appendIf(a, "--effort", req.Effort)
+		if bypass {
+			a = append(a, h.Bypass)
+		}
 		a = append(a, "--", prompt)
 	case conv.OpenCode, conv.Kilo:
 		a = []string{h.CLI, "run", "--format", "json"}

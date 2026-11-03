@@ -14,7 +14,7 @@ test("browses a project's Claude Code and Cursor conversations", async ({ page }
   // The most recent project opens by itself and lists both harnesses.
   await expect(page.locator("#ahProjects [data-project]").first()).toContainText("demo_app")
   const list = page.locator("#ahConversations")
-  await expect(list.locator("[data-conversation]")).toHaveCount(4)
+  await expect(list.locator("[data-conversation]")).toHaveCount(5)
   await expect(list).toContainText("Health endpoint")
   await expect(list).toContainText("Fix the login form")
 
@@ -90,12 +90,12 @@ test("collapses the projects panel and filters by harness", async ({ page }) => 
 
   // "All" shows name and count; the other harnesses only their icon until selected.
   const chips = page.locator(".ah-segmented button")
-  await expect(chips).toHaveText([/All\s*4/, "", "", "", ""])
-  for (const [i, name] of ["All 4", "Claude Code 1", "Cursor 1", "Codex 1", "pi 1"].entries()) {
+  await expect(chips).toHaveText([/All\s*5/, "", "", "", "", ""])
+  for (const [i, name] of ["All 5", "Claude Code 1", "Cursor 1", "Codex 1", "pi 1", "Command Code 1"].entries()) {
     await expect(chips.nth(i)).toHaveAccessibleName(name)
   }
   await chips.nth(2).click()
-  await expect(chips).toHaveText([/All\s*4/, "", /Cursor\s*1/, "", ""])
+  await expect(chips).toHaveText([/All\s*5/, "", /Cursor\s*1/, "", "", ""])
   await expect(page.locator("#ahConversations [data-conversation]")).toHaveCount(1)
   await expect(page.locator("#ahConversations")).toContainText("Fix the login form")
 })
@@ -134,4 +134,19 @@ test("shows Codex and pi conversations with their resume commands", async ({ pag
   await expect(page.locator("#ahResumeCommand")).toHaveText(`cd ${PROJECT} && pi --session pi-1`)
   await expect(page.locator("#ahResumeBypass")).toHaveCount(0)
   await expect(page.locator("#ahResumeNoBypass")).toContainText("doesn't ask for permissions")
+})
+
+test("shows a Command Code conversation with its resume command", async ({ page }) => {
+  await page.goto(`/?project=${encodeURIComponent(PROJECT)}&c=commandcode:cc-1`)
+  const chat = page.locator("#ahChat")
+  await expect(page.locator(".ah-view__title")).toContainText("Go file count")
+  await expect(chat.locator(".ah-msg--agent .ah-msg__who")).toHaveText("Command Code - GLM 5.3 Flash")
+  await expect(chat.locator(".markdown-body strong")).toHaveText("12")
+  await chat.locator(".ah-work__toggle").click()
+  await chat.locator(".ah-step--tool .ah-step__head").click()
+  await expect(chat.locator(".ah-code--shell")).toHaveText("ls *.go | wc -l")
+  await expect(chat.locator(".ah-code--output")).toHaveText("12")
+  await page.locator("#ahResume").click()
+  await page.locator("#ahResumeBypass").check()
+  await expect(page.locator("#ahResumeCommand")).toHaveText(`cd ${PROJECT} && cmdc --resume cc-1 --yolo`)
 })

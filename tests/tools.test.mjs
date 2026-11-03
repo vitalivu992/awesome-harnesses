@@ -28,6 +28,8 @@ describe("tool calls", () => {
     expect(toolIcon("mcp__a__b")).toBe("fa-plug")
     expect(toolIcon("exec_command")).toBe(toolIcon("Bash"))
     expect(toolIcon("apply_patch")).toBe(toolIcon("Edit"))
+    expect(toolIcon("write_file")).toBe(toolIcon("Edit"))
+    expect(toolIcon("ask_user_question")).toBe(toolIcon("AskUserQuestion"))
     expect(toolIcon("Unknown")).toBe("fa-wrench")
   })
 })

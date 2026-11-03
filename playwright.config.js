@@ -44,7 +44,7 @@ export default defineConfig({
         // the harness CLIs are looked up only in its bin/ (a fake claude; never the real ones).
         command:
           `node e2e/make-fixtures.mjs && pnpm build && PORT=8768 CLAUDE_DIR=${home}/.claude CURSOR_DIR=${home}/.cursor CURSOR_LOGS_DIR=${home}/.cursor-server/data/logs ` +
-          `CODEX_DIR=${home}/.codex PI_DIR=${home}/.pi OPENCODE_DB=${home}/opencode.db KILO_DB=${home}/kilo.db LAUNCH_PATH=${resolve(home, "bin")} ` +
+          `CODEX_DIR=${home}/.codex PI_DIR=${home}/.pi OPENCODE_DB=${home}/opencode.db KILO_DB=${home}/kilo.db COMMANDCODE_DIR=${home}/.commandcode LAUNCH_PATH=${resolve(home, "bin")} ` +
           `go run -tags e2e ./cmd/server`,
         url: `${baseURL}/health`,
         reuseExistingServer: !process.env.CI,

@@ -1,5 +1,5 @@
 // Package catalog finds the conversations of every supported harness (Claude
-// Code, Cursor, Codex, pi, OpenCode, Kilo), groups them by project (the
+// Code, Cursor, Codex, pi, OpenCode, Kilo, Command Code), groups them by project (the
 // directory the agent ran in, so one project lists every harness's
 // conversations) and caches parsed summaries by file size + modification time
 // (update time for database-backed harnesses). Everything is read-only.
@@ -29,11 +29,12 @@ type Config struct {
 	CursorDir string // ~/.cursor
 	// CursorLogsDir: the Cursor server's logs (~/.cursor-server/data/logs), which
 	// hold the model and turn times of Cursor app chats.
-	CursorLogsDir string
-	CodexDir      string // ~/.codex ($CODEX_HOME)
-	PiDir         string // ~/.pi
-	OpenCodeDB    string // ~/.local/share/opencode/opencode.db
-	KiloDB        string // ~/.local/share/kilo/kilo.db
+	CursorLogsDir  string
+	CodexDir       string // ~/.codex ($CODEX_HOME)
+	PiDir          string // ~/.pi
+	OpenCodeDB     string // ~/.local/share/opencode/opencode.db
+	KiloDB         string // ~/.local/share/kilo/kilo.db
+	CommandCodeDir string // ~/.commandcode
 	// ActiveWindow: a conversation updated this recently is marked active.
 	ActiveWindow time.Duration
 }
@@ -50,14 +51,15 @@ func DefaultConfig() Config {
 		data = filepath.Join(home, ".local", "share")
 	}
 	return Config{
-		ClaudeDir:     filepath.Join(home, ".claude"),
-		CursorDir:     filepath.Join(home, ".cursor"),
-		CursorLogsDir: filepath.Join(home, ".cursor-server", "data", "logs"),
-		CodexDir:      codex,
-		PiDir:         filepath.Join(home, ".pi"),
-		OpenCodeDB:    filepath.Join(data, "opencode", "opencode.db"),
-		KiloDB:        filepath.Join(data, "kilo", "kilo.db"),
-		ActiveWindow:  2 * time.Minute,
+		ClaudeDir:      filepath.Join(home, ".claude"),
+		CursorDir:      filepath.Join(home, ".cursor"),
+		CursorLogsDir:  filepath.Join(home, ".cursor-server", "data", "logs"),
+		CodexDir:       codex,
+		PiDir:          filepath.Join(home, ".pi"),
+		OpenCodeDB:     filepath.Join(data, "opencode", "opencode.db"),
+		KiloDB:         filepath.Join(data, "kilo", "kilo.db"),
+		CommandCodeDir: filepath.Join(home, ".commandcode"),
+		ActiveWindow:   2 * time.Minute,
 	}
 }
 
@@ -113,7 +115,7 @@ type Catalog struct {
 	mu        sync.Mutex
 	summaries map[string]cached                    // item.cacheKey() → summary
 	dirPaths  map[string]string                    // transcript folder → project path
-	heads     map[string]header                    // Codex / pi file → id + cwd from its first line
+	heads     map[string]header                    // Codex / pi / Command Code file → id + cwd from its first line
 	dbs       map[string]*sql.DB                   // OpenCode / Kilo database path → handle
 	chatInfo  map[string]stamped[*cursor.ChatInfo] // Cursor store.db path → info (nil = none)
 	tracked   stamped[map[string]string]           // Cursor conversation id → model
@@ -149,6 +151,7 @@ func (c *Catalog) items() []item {
 	out = append(out, c.piItems()...)
 	out = append(out, c.dbItems(conv.OpenCode, c.cfg.OpenCodeDB)...)
 	out = append(out, c.dbItems(conv.Kilo, c.cfg.KiloDB)...)
+	out = append(out, c.commandCodeItems()...)
 	return out
 }
 

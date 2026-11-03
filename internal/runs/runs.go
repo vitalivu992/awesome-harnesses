@@ -417,8 +417,12 @@ func (r *run) finish(err error) {
 }
 
 // sessionFrom: the conversation id in a CLI's JSON event — Codex
-// thread.started's thread_id, cursor-agent's session_id, OpenCode / Kilo's sessionID.
+// thread.started's thread_id, cursor-agent's session_id, OpenCode / Kilo's
+// sessionID, cmdc's {"type": "event", "event": {"type": "run_start", "sessionId"}}.
 func sessionFrom(ev map[string]any) string {
+	if inner, ok := ev["event"].(map[string]any); ok {
+		ev = inner
+	}
 	for _, k := range []string{"thread_id", "session_id", "sessionID", "sessionId"} {
 		if s, ok := ev[k].(string); ok && s != "" {
 			return s
@@ -433,10 +437,21 @@ func sessionFrom(ev map[string]any) string {
 }
 
 // errorFrom: the message of an error event (Codex error / turn.failed,
-// OpenCode error, cursor-agent's result with is_error).
+// OpenCode error, cursor-agent's result with is_error, cmdc's run_error event
+// and result with subtype error).
 func errorFrom(ev map[string]any) string {
+	if inner, ok := ev["event"].(map[string]any); ok && ev["type"] == "event" {
+		// Its tool_errored events are a tool's failure, not the run's.
+		if inner["type"] != "run_error" {
+			return ""
+		}
+		ev = inner
+	}
 	typ, _ := ev["type"].(string)
 	isErr, _ := ev["is_error"].(bool)
+	if ev["subtype"] == "error" {
+		isErr = true
+	}
 	if !isErr && !strings.Contains(typ, "error") && !strings.Contains(typ, "fail") {
 		return ""
 	}

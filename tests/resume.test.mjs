@@ -22,6 +22,7 @@ describe("resumeCommand", () => {
     ["pi", "pi --session s1", "pi --session s1"],
     ["opencode", "opencode --session s1", "opencode --session s1 --auto"],
     ["kilo", "kilo --session s1", "kilo --session s1"],
+    ["commandcode", "cmdc --resume s1", "cmdc --resume s1 --yolo"],
   ])("resumes %s sessions", (harness, plain, bypassed) => {
     const conv = { harness, id: "s1", cwd: "/w" }
     expect(resumeCommand(conv)).toBe(`cd /w && ${plain}`)
