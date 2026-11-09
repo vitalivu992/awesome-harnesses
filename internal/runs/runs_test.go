@@ -87,6 +87,23 @@ func TestStartNewClaude(t *testing.T) {
 	}
 }
 
+// A run's env carries PWD=<cwd>: kilo and opencode resolve the session's
+// folder through $PWD, which in the server's env would be stale.
+func TestStartPwdInEnv(t *testing.T) {
+	m, bin, work := newManager(t)
+	m.Env = []string{"HOME=/tmp", "PWD=/home/elsewhere"}
+	fakeCLI(t, bin, "claude", `printf '%s\n' "$PWD" > "$0.pwd"`)
+	info, err := m.Start(launch.Request{Harness: "claude", Cwd: work, Prompt: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wait(t, m, info.ID)
+	pwd, _ := os.ReadFile(filepath.Join(bin, "claude.pwd"))
+	if strings.TrimSpace(string(pwd)) != work {
+		t.Errorf("PWD %q, want %q", pwd, work)
+	}
+}
+
 func TestSessionFromJSONEvents(t *testing.T) {
 	m, bin, work := newManager(t)
 	fakeCLI(t, bin, "codex", `echo 'not json'; echo '{"type":"thread.started","thread_id":"t-9"}'; echo '{"type":"turn.completed"}'`)

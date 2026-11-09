@@ -320,7 +320,7 @@ func (m *Manager) Start(req launch.Request) (Info, error) {
 
 	cmd := exec.Command(exe, plan.Argv[1:]...)
 	cmd.Dir = plan.Cwd
-	cmd.Env = withPath(m.Env, path)
+	cmd.Env = withPwd(withPath(m.Env, path), plan.Cwd)
 	setGroup(cmd)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -615,6 +615,19 @@ func withPath(env []string, path string) []string {
 		}
 	}
 	return append(out, "PATH="+path)
+}
+
+// withPwd is env with PWD set to dir and OLDPWD dropped: kilo and opencode
+// resolve the session's folder through $PWD, which in the server's
+// environment (a systemd service) is its start folder, not cmd.Dir.
+func withPwd(env []string, dir string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		if name, _, _ := strings.Cut(kv, "="); !strings.EqualFold(name, "PWD") && !strings.EqualFold(name, "OLDPWD") {
+			out = append(out, kv)
+		}
+	}
+	return append(out, "PWD="+dir)
 }
 
 // tail keeps the last tailBytes written.
