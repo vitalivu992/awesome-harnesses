@@ -69,6 +69,7 @@ body {
 
 .ah-app {
   display: grid;
+  /* A closed explorer takes no column: its button is on the terminal bar. */
   grid-template-columns: var(--ah-projects-w) var(--ah-convs-w) minmax(0, 1fr);
   height: 100vh;
   overflow: hidden;
@@ -76,6 +77,14 @@ body {
 
 .ah-app.is-collapsed {
   grid-template-columns: var(--ah-rail-w) var(--ah-convs-w) minmax(0, 1fr);
+}
+
+.ah-app.has-explorer {
+  grid-template-columns: var(--ah-projects-w) var(--ah-convs-w) minmax(0, 1fr) var(--ah-explorer-w);
+}
+
+.ah-app.is-collapsed.has-explorer {
+  grid-template-columns: var(--ah-rail-w) var(--ah-convs-w) minmax(0, 1fr) var(--ah-explorer-w);
 }
 
 .ah-projects,
@@ -1683,68 +1692,103 @@ body {
 }
 
 .markdown-body .hljs-doctag,
+.ah-code .hljs-doctag,
 .markdown-body .hljs-keyword,
+.ah-code .hljs-keyword,
 .markdown-body .hljs-meta .hljs-keyword,
+.ah-code .hljs-meta .hljs-keyword,
 .markdown-body .hljs-template-tag,
+.ah-code .hljs-template-tag,
 .markdown-body .hljs-template-variable,
+.ah-code .hljs-template-variable,
 .markdown-body .hljs-type,
-.markdown-body .hljs-variable.language_ {
+.ah-code .hljs-type,
+.markdown-body .hljs-variable.language_,
+.ah-code .hljs-variable.language_ {
   color: var(--ah-hl-keyword);
 }
 
 .markdown-body .hljs-title,
+.ah-code .hljs-title,
 .markdown-body .hljs-title.class_,
-.markdown-body .hljs-title.function_ {
+.ah-code .hljs-title.class_,
+.markdown-body .hljs-title.function_,
+.ah-code .hljs-title.function_ {
   color: var(--ah-hl-title);
 }
 
 .markdown-body .hljs-attr,
+.ah-code .hljs-attr,
 .markdown-body .hljs-attribute,
+.ah-code .hljs-attribute,
 .markdown-body .hljs-literal,
+.ah-code .hljs-literal,
 .markdown-body .hljs-meta,
+.ah-code .hljs-meta,
 .markdown-body .hljs-number,
+.ah-code .hljs-number,
 .markdown-body .hljs-operator,
+.ah-code .hljs-operator,
 .markdown-body .hljs-variable,
+.ah-code .hljs-variable,
 .markdown-body .hljs-selector-attr,
+.ah-code .hljs-selector-attr,
 .markdown-body .hljs-selector-class,
-.markdown-body .hljs-selector-id {
+.ah-code .hljs-selector-class,
+.markdown-body .hljs-selector-id,
+.ah-code .hljs-selector-id {
   color: var(--ah-hl-attr);
 }
 
 .markdown-body .hljs-regexp,
+.ah-code .hljs-regexp,
 .markdown-body .hljs-string,
-.markdown-body .hljs-meta .hljs-string {
+.ah-code .hljs-string,
+.markdown-body .hljs-meta .hljs-string,
+.ah-code .hljs-meta .hljs-string {
   color: var(--ah-hl-string);
 }
 
 .markdown-body .hljs-built_in,
-.markdown-body .hljs-symbol {
+.ah-code .hljs-built_in,
+.markdown-body .hljs-symbol,
+.ah-code .hljs-symbol {
   color: var(--ah-hl-builtin);
 }
 
 .markdown-body .hljs-comment,
+.ah-code .hljs-comment,
 .markdown-body .hljs-code,
-.markdown-body .hljs-formula {
+.ah-code .hljs-code,
+.markdown-body .hljs-formula,
+.ah-code .hljs-formula {
   color: var(--ah-hl-comment);
 }
 
 .markdown-body .hljs-name,
+.ah-code .hljs-name,
 .markdown-body .hljs-quote,
+.ah-code .hljs-quote,
 .markdown-body .hljs-selector-tag,
-.markdown-body .hljs-selector-pseudo {
+.ah-code .hljs-selector-tag,
+.markdown-body .hljs-selector-pseudo,
+.ah-code .hljs-selector-pseudo {
   color: var(--ah-hl-name);
 }
 
-.markdown-body .hljs-section {
+.markdown-body .hljs-section,
+.ah-code .hljs-section {
   color: var(--ah-hl-section);
   font-weight: 600;
 }
 
-.markdown-body .hljs-addition {
+.markdown-body .hljs-addition,
+.ah-code .hljs-addition {
   background: var(--ah-add-bg);
 }
 
-.markdown-body .hljs-deletion {
+.markdown-body .hljs-deletion,
+.ah-code .hljs-deletion {
   background: var(--ah-del-bg);
 }
 
@@ -2328,6 +2372,19 @@ body.is-resizing-shell {
   margin-left: auto;
 }
 
+/* The explorer's button, at the bar's right end (after the toggle, if any). */
+.ah-shells__explorer {
+  margin-left: auto;
+}
+
+.ah-shells__toggle + .ah-shells__explorer {
+  margin-left: 0;
+}
+
+.ah-shells__explorer.is-on {
+  color: var(--fgColor-accent, #0969da);
+}
+
 .ah-shells__body {
   min-height: 120px;
   padding: 6px 0 0 10px;
@@ -2350,6 +2407,7 @@ body.is-resizing-shell {
 
 :root {
   --ah-settings-w: 440px;
+  --ah-explorer-w: 300px;
   --ah-cmd-bg: #fbefff;
   --ah-cmd-fg: #8250df;
   --ah-skill-bg: #fff1e5;
@@ -2363,12 +2421,22 @@ body.is-resizing-shell {
   --ah-skill-fg: #ffa657;
 }
 
+/* Settings and the explorer are columns after the main one (the DOM order is
+   projects | conversations | main | explorer | settings). */
 .ah-app.has-settings {
   grid-template-columns: var(--ah-projects-w) var(--ah-convs-w) minmax(0, 1fr) var(--ah-settings-w);
 }
 
 .ah-app.is-collapsed.has-settings {
   grid-template-columns: var(--ah-rail-w) var(--ah-convs-w) minmax(0, 1fr) var(--ah-settings-w);
+}
+
+.ah-app.has-explorer.has-settings {
+  grid-template-columns: var(--ah-projects-w) var(--ah-convs-w) minmax(0, 1fr) var(--ah-explorer-w) var(--ah-settings-w);
+}
+
+.ah-app.is-collapsed.has-explorer.has-settings {
+  grid-template-columns: var(--ah-rail-w) var(--ah-convs-w) minmax(0, 1fr) var(--ah-explorer-w) var(--ah-settings-w);
 }
 
 
@@ -3151,4 +3219,700 @@ body.is-resizing-shell {
   .ah-hset__chev {
     transition: none;
   }
+}
+
+/* ---------- explorer: the right panel's file tree and git view ---------- */
+
+.ah-explorer {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--borderColor-default, #d0d7de);
+  background: var(--bgColor-default, #fff);
+}
+
+.ah-explorer__head {
+  height: auto;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+}
+
+.ah-explorer__tabs {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+}
+
+.ah-explorer__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--fgColor-muted, #59636e);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ah-explorer__tab:hover {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ah-explorer__tab.is-active {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+  color: var(--fgColor-accent, #0969da);
+  font-weight: 600;
+}
+
+.ah-explorer__scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 6px 24px;
+  font-size: 13px;
+}
+
+/* the file tree */
+
+.ah-tree,
+.ah-tree .ah-tree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ah-tree__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px 3px calc(6px + var(--ah-depth, 0) * 14px);
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--fgColor-default, #1f2328);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ah-tree__row:hover {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+}
+
+.ah-tree__chev {
+  flex: 0 0 10px;
+  font-size: 9px;
+  color: var(--fgColor-muted, #59636e);
+}
+
+span.ah-tree__chev {
+  /* files line up with folders' chevrons */
+  flex: 0 0 10px;
+  height: 1px;
+}
+
+.ah-tree__icon {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--fgColor-muted, #59636e);
+}
+
+button .ah-tree__icon {
+  color: var(--color-accent-fg, #0969da);
+  opacity: 0.75;
+}
+
+.ah-tree__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-tree__size {
+  flex: 0 0 auto;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 11px;
+}
+
+.ah-tree__hint {
+  margin: 2px 0;
+  padding-left: calc(6px + var(--ah-depth, 0) * 14px);
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+}
+
+.ah-tree__hint--error {
+  color: var(--fgColor-danger, #cf222e);
+}
+
+/* the git view */
+
+.ah-git__branch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 6px 10px;
+  color: var(--fgColor-muted, #59636e);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-git__head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 6px 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-git__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ah-git__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.ah-git__row:hover {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+}
+
+.ah-git__letter {
+  flex: 0 0 16px;
+  text-align: center;
+  font-family: var(--fontStack-monospace, ui-monospace, monospace);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.ah-git__letter--added {
+  color: var(--fgColor-success, #1a7f37);
+}
+
+.ah-git__letter--modified {
+  color: var(--fgColor-attention, #9a6700);
+}
+
+.ah-git__letter--deleted {
+  color: var(--fgColor-danger, #cf222e);
+}
+
+.ah-git__letter--renamed,
+.ah-git__letter--copied {
+  color: var(--fgColor-done, #8250df);
+}
+
+.ah-git__letter--untracked {
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-git__letter--conflict {
+  color: var(--fgColor-danger, #cf222e);
+}
+
+.ah-git__row--deleted .ah-git__path {
+  text-decoration: line-through;
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-git__path {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-git__row .ah-icon-btn {
+  flex: 0 0 auto;
+  padding: 3px 6px;
+  font-size: 11px;
+  opacity: 0;
+}
+
+.ah-git__row:hover .ah-icon-btn,
+.ah-git__row .ah-icon-btn:focus-visible,
+.ah-git__row .ah-icon-btn:disabled {
+  opacity: 1;
+}
+
+.ah-git__actions {
+  display: flex;
+  gap: 2px;
+}
+
+.ah-git__confirm {
+  display: flex;
+  gap: 4px;
+}
+
+.ah-git__confirm .ah-btn {
+  height: 22px;
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.ah-git__confirm .ah-btn:first-child {
+  color: var(--fgColor-danger, #cf222e);
+  border-color: var(--borderColor-danger-emphasis, #cf222e);
+  font-weight: 600;
+}
+
+.ah-git__commit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 6px 0;
+}
+
+.ah-git__message {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 6px;
+  background: var(--bgColor-default, #fff);
+  color: var(--fgColor-default, #1f2328);
+  font: inherit;
+  font-size: 13px;
+  resize: vertical;
+  min-height: 44px;
+}
+
+.ah-git__message:disabled {
+  opacity: 0.55;
+}
+
+.ah-git__message:focus {
+  outline: 2px solid var(--focus-outlineColor, #0969da);
+  outline-offset: -1px;
+}
+
+.ah-git__commit .ah-btn {
+  align-self: flex-end;
+}
+
+.ah-git__done {
+  margin: 6px 6px 0;
+  color: var(--fgColor-success, #1a7f37);
+  font-size: 12px;
+}
+
+.ah-git__done code {
+  font-size: 11px;
+}
+
+.ah-git__empty {
+  margin: 2px 6px;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+}
+
+.ah-git__log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.ah-git__commit-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  min-width: 0;
+}
+
+.ah-git__commit-row:hover {
+  background: var(--bgColor-neutral-muted, rgba(175, 184, 193, 0.2));
+}
+
+.ah-git__hash {
+  flex: 0 0 auto;
+  color: var(--fgColor-accent, #0969da);
+  font-size: 11px;
+}
+
+.ah-git__subject {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ah-git__commit-row time {
+  flex: 0 0 auto;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ah-git__row .ah-icon-btn {
+    transition: none;
+  }
+}
+
+/* explorer rows that open the viewer */
+
+.ah-tree__file .ah-tree__icon {
+  color: var(--fgColor-muted, #59636e);
+  opacity: 1;
+}
+
+.ah-tree__row.is-selected,
+.ah-git__row.is-selected {
+  background: var(--bgColor-accent-muted, #ddf4ff);
+}
+
+.ah-tree__row:focus-visible,
+.ah-git__path:focus-visible {
+  outline: 2px solid var(--focus-outlineColor, #0969da);
+  outline-offset: -2px;
+}
+
+button.ah-git__path {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ah-git__row:hover button.ah-git__path {
+  color: var(--fgColor-accent, #0969da);
+}
+
+/* ---------- viewer: a file or a diff over the conversation ---------- */
+
+.ah-main {
+  position: relative;
+}
+
+/* Over the right part of the conversation, which stays visible on its left. */
+.ah-viewer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 26;
+  display: flex;
+  flex-direction: column;
+  width: min(960px, 74%);
+  min-width: min(420px, 100%);
+  border-left: 1px solid var(--borderColor-default, #d0d7de);
+  background: var(--bgColor-default, #fff);
+  box-shadow: -12px 0 28px rgba(31, 35, 40, 0.14);
+  animation: ah-viewer-in 160ms ease-out;
+}
+
+@keyframes ah-viewer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+}
+
+.ah-viewer__head {
+  flex: 0 0 auto;
+  border-bottom: 1px solid var(--borderColor-default, #d0d7de);
+  background: var(--bgColor-muted, #f6f8fa);
+}
+
+.ah-viewer__title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px 8px 14px;
+}
+
+.ah-viewer__icon {
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-viewer__title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.ah-viewer__title strong {
+  flex: 0 0 auto;
+  max-width: 70%;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ah-viewer__dir {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+  direction: rtl;
+  text-align: left;
+}
+
+.ah-viewer__badge {
+  flex: 0 0 auto;
+  padding: 1px 8px;
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  border-radius: 999px;
+  color: var(--fgColor-muted, #59636e);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ah-viewer__badge.is-staged {
+  border-color: var(--borderColor-success-muted, #4ac26b66);
+  color: var(--fgColor-success, #1a7f37);
+}
+
+.ah-viewer__badge.is-changes {
+  border-color: var(--borderColor-attention-muted, #d4a72c66);
+  color: var(--fgColor-attention, #9a6700);
+}
+
+.ah-viewer__badge.is-conflict {
+  border-color: var(--borderColor-danger-muted, #ff818266);
+  color: var(--fgColor-danger, #cf222e);
+}
+
+.ah-viewer__actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 2px;
+}
+
+.ah-viewer__conflict {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px 8px 14px;
+  border-top: 1px solid var(--borderColor-danger-muted, #ff818266);
+  background: var(--bgColor-danger-muted, #ffebe9);
+}
+
+.ah-viewer__conflict-kind {
+  flex: 1 1 auto;
+  color: var(--fgColor-danger, #cf222e);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ah-viewer__conflict-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ah-viewer__conflict-actions .ah-btn {
+  background: var(--bgColor-default, #fff);
+}
+
+.ah-viewer__more {
+  position: relative;
+}
+
+.ah-viewer__more .ah-icon-btn {
+  border: 1px solid var(--borderColor-default, #d0d7de);
+  background: var(--bgColor-default, #fff);
+}
+
+.ah-viewer__conflict-error {
+  flex: 1 0 100%;
+  margin: 0;
+  color: var(--fgColor-danger, #cf222e);
+  font-size: 12px;
+}
+
+/* the menu under a button, not above it */
+.ah-menu.ah-menu--down {
+  top: calc(100% + 4px);
+  bottom: auto;
+  width: 240px;
+}
+
+.ah-viewer__notice {
+  margin: 0;
+  padding: 6px 14px;
+  border-top: 1px solid var(--borderColor-success-muted, #4ac26b66);
+  background: var(--bgColor-success-muted, #dafbe1);
+  color: var(--fgColor-success, #1a7f37);
+  font-size: 12px;
+}
+
+.ah-viewer__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.ah-viewer__body > .ah-empty,
+.ah-viewer__body > .ah-error,
+.ah-viewer__body > .ah-tree__hint {
+  margin: 12px 14px;
+}
+
+.ah-viewer__info {
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  margin: 0;
+  padding: 5px 14px;
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  background: var(--bgColor-default, #fff);
+  color: var(--fgColor-muted, #59636e);
+  font-size: 12px;
+}
+
+.ah-viewer__add {
+  color: var(--fgColor-success, #1a7f37);
+  font-weight: 600;
+}
+
+.ah-viewer__del {
+  color: var(--fgColor-danger, #cf222e);
+  font-weight: 600;
+}
+
+/* GitHub's blob view: numbers in a gutter (drawn from data-line, so a
+   selection copies only the code), monospace lines that keep their spaces. */
+.ah-code {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--fontStack-monospace, ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace);
+  font-size: 12px;
+  line-height: 20px;
+  tab-size: 4;
+}
+
+.ah-code td {
+  padding: 0;
+  vertical-align: top;
+}
+
+.ah-code__no {
+  width: 1%;
+  min-width: 50px;
+  padding: 0 10px !important;
+  color: var(--fgColor-muted, #59636e);
+  text-align: right;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.ah-code__no::before {
+  content: attr(data-line);
+}
+
+.ah-code__line {
+  padding: 0 14px 0 10px !important;
+  white-space: pre;
+  color: var(--fgColor-default, #1f2328);
+}
+
+.ah-code tr:first-child td {
+  padding-top: 6px;
+}
+
+.ah-code tr.is-marker td {
+  background: var(--bgColor-attention-muted, #fff8c5);
+  font-weight: 600;
+}
+
+/* unified diff */
+
+.ah-diff + .ah-diff {
+  border-top: 1px solid var(--borderColor-muted, #d8dee4);
+}
+
+.ah-diff tr.is-file td {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--borderColor-muted, #d8dee4);
+  background: var(--bgColor-muted, #f6f8fa);
+  font-weight: 600;
+}
+
+.ah-diff tr.is-hunk td {
+  padding-top: 2px;
+  padding-bottom: 2px;
+  background: var(--bgColor-accent-muted, #ddf4ff);
+  color: var(--fgColor-muted, #59636e);
+}
+
+.ah-diff tr.is-meta td {
+  color: var(--fgColor-muted, #59636e);
+  font-style: italic;
+}
+
+.ah-diff tr.is-add td {
+  background: var(--ah-add-bg);
+}
+
+.ah-diff tr.is-add .ah-code__no {
+  background: color-mix(in srgb, var(--ah-add-bg), #1a7f37 14%);
+}
+
+.ah-diff tr.is-del td {
+  background: var(--ah-del-bg);
+}
+
+.ah-diff tr.is-del .ah-code__no {
+  background: color-mix(in srgb, var(--ah-del-bg), #cf222e 12%);
+}
+
+.ah-diff__mark::before {
+  content: attr(data-mark);
+  display: inline-block;
+  width: 14px;
+  color: var(--fgColor-muted, #59636e);
+  user-select: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ah-viewer {
+    animation: none;
+  }
+}
+
+/* conflict markers stay marked inside a diff's added lines */
+.ah-diff tr.is-marker td,
+.ah-diff tr.is-marker .ah-code__no {
+  background: var(--bgColor-attention-muted, #fff8c5);
 }

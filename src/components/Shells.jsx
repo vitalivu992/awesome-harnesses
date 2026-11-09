@@ -112,7 +112,7 @@ const MIN_HEIGHT = 120
  * running command is in the tooltip); open, the selected tab's terminal
  * shows under it and the top edge drags to resize. `defaultCwd` is where "+" opens a shell.
  */
-export function ShellPanel({ defaultCwd }) {
+export function ShellPanel({ defaultCwd, explorerOpen, onToggleExplorer }) {
   const { shells, activeId, open, error, setOpen, setError, select, openShell, closeShell, updateShell, refresh } = useShells()
   const [height, setHeight] = useState(() => Number(readPrefs().shellHeight) || 320)
   const panel = useRef(null)
@@ -201,6 +201,19 @@ export function ShellPanel({ defaultCwd }) {
             aria-expanded={shown}
           >
             <i className={`fa-solid ${shown ? "fa-chevron-down" : "fa-chevron-up"}`} aria-hidden="true"></i>
+          </button>
+        ) : null}
+        {onToggleExplorer ? (
+          <button
+            type="button"
+            className={`ah-icon-btn ah-shells__explorer${explorerOpen ? " is-on" : ""}`}
+            id="ahExplorerToggle"
+            onClick={onToggleExplorer}
+            title={explorerOpen ? "Hide the explorer" : "Show the explorer (files and git)"}
+            aria-label={explorerOpen ? "Hide the explorer" : "Show the explorer (files and git)"}
+            aria-pressed={Boolean(explorerOpen)}
+          >
+            <i className="fa-solid fa-folder-tree" aria-hidden="true"></i>
           </button>
         ) : null}
       </div>

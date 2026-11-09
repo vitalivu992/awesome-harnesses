@@ -21,6 +21,9 @@ import { ShellPanel, ShellProvider, useShells } from "./components/Shells.jsx"
 import { NewConversation } from "./components/NewConversation.jsx"
 import { RunsProvider, useRuns } from "./components/Runs.jsx"
 import { SettingsPanel } from "./components/Settings.jsx"
+import { Explorer } from "./components/Explorer.jsx"
+import { FileViewer } from "./components/FileViewer.jsx"
+import { viewerKey } from "./lib/explorer.js"
 
 /** "claude:<id>" → ["claude", "<id>"]. */
 export function splitConversationKey(key) {
@@ -45,8 +48,16 @@ function Browser({ user, onLogout }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsFocus, setSettingsFocus] = useState("")
   const [collapsed, setCollapsed] = useState(() => Boolean(readPrefs().projectsCollapsed))
+  const [explorerOpen, setExplorerOpen] = useState(() => Boolean(readPrefs().explorerOpen))
   const [projectsReload, setProjectsReload] = useState(0)
   const [convsReload, setConvsReload] = useState(0)
+  // What the viewer over the conversation shows (a file or a change from the
+  // Explorer); `id` remounts it on every open, so the same file reloads.
+  const [viewer, setViewer] = useState(null)
+  const viewerIds = useRef(0)
+  const openViewer = useCallback((target) => setViewer({ ...target, id: ++viewerIds.current }), [])
+  const closeViewer = useCallback(() => setViewer(null), [])
+  const [gitVersion, setGitVersion] = useState(0)
 
   // Both lists reload quietly, so the projects and conversations an agent is working on stay marked.
   const projects = useFetch((signal) => fetchProjects({ signal }), [projectsReload], {
@@ -70,6 +81,9 @@ function Browser({ user, onLogout }) {
   }, [projectKey, projects.data, setParams])
 
   const project = projects.data?.find((p) => p.key === projectKey) || null
+
+  // A file of another project would be out of place: the viewer closes.
+  useEffect(() => setViewer(null), [projectKey])
 
   useEffect(() => {
     const title = conversation.data?.title || project?.name
@@ -100,9 +114,15 @@ function Browser({ user, onLogout }) {
       return !v
     })
   }
+  const toggleExplorer = () => {
+    setExplorerOpen((v) => {
+      writePref("explorerOpen", !v)
+      return !v
+    })
+  }
 
   return (
-    <div className={`ah-app${collapsed ? " is-collapsed" : ""}${settingsOpen ? " has-settings" : ""}`}>
+    <div className={`ah-app${collapsed ? " is-collapsed" : ""}${settingsOpen ? " has-settings" : ""}${explorerOpen ? " has-explorer" : ""}`}>
       <ProjectsPanel
         projects={projects.data}
         loading={projects.loading}
@@ -150,8 +170,19 @@ function Browser({ user, onLogout }) {
             onOpenSettings={() => openSettings(harness)}
           />
         )}
-        <ShellPanel defaultCwd={project?.exists ? project.path : ""} />
+        <ShellPanel defaultCwd={project?.exists ? project.path : ""} explorerOpen={explorerOpen} onToggleExplorer={toggleExplorer} />
+        {viewer ? (
+          <FileViewer key={viewer.id} target={viewer} base={project?.path} onClose={closeViewer} onOpen={openViewer} onResolved={() => setGitVersion((n) => n + 1)} />
+        ) : null}
       </main>
+      <Explorer
+        project={project}
+        open={explorerOpen}
+        onToggle={toggleExplorer}
+        onOpen={openViewer}
+        selected={viewerKey(viewer)}
+        gitVersion={gitVersion}
+      />
       {settingsOpen ? (
         <SettingsPanel onClose={() => setSettingsOpen(false)} cwd={project?.exists ? project.path : ""} focus={settingsFocus} />
       ) : null}

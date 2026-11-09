@@ -129,3 +129,75 @@ export async function startRun(req) {
 export async function stopRun(id) {
   await getJSON(`/api/runs/${encodeURIComponent(id)}`, { method: "DELETE" })
 }
+
+// The Explorer panel (internal/git, internal/files): a project's file tree
+// and its git state. The git actions change the repository on disk.
+
+/** One folder's entries for the file tree: `{name, dir, size}[]`. */
+export async function fetchDir(cwd, opts) {
+  const q = new URLSearchParams({ cwd: cwd || "" })
+  return (await getJSON(`/api/files?${q}`, opts)).entries || []
+}
+
+/** `{ branch, staged, changes }`; each entry `{path, orig, x, y}`. */
+export async function fetchGitStatus(cwd, opts) {
+  const q = new URLSearchParams({ cwd: cwd || "" })
+  return getJSON(`/api/git/status?${q}`, opts)
+}
+
+/** `{ commits: [{hash, date, author, subject}] }`, newest first. */
+export async function fetchGitLog(cwd, opts) {
+  const q = new URLSearchParams({ cwd: cwd || "" })
+  return (await getJSON(`/api/git/log?${q}`, opts)).commits || []
+}
+
+async function gitAction(path, cwd, paths) {
+  await getJSON(path, { method: "POST", body: { cwd, paths } })
+}
+
+/** `paths` are repository-relative, as git status reports them. */
+export function stageFiles(cwd, paths) {
+  return gitAction("/api/git/stage", cwd, paths)
+}
+
+export function unstageFiles(cwd, paths) {
+  return gitAction("/api/git/unstage", cwd, paths)
+}
+
+/** Restores tracked files to their last committed content (untracked files can't be reverted). */
+export function discardChanges(cwd, paths) {
+  return gitAction("/api/git/discard", cwd, paths)
+}
+
+/** Commits the staged changes; resolves to `{commit}` (the short hash). */
+export function commitStaged(cwd, message) {
+  return getJSON("/api/git/commit", { method: "POST", body: { cwd, message } })
+}
+
+// The file viewer (components/FileViewer.jsx).
+
+/** `{path, size, text, binary, truncated, conflict?: {cwd, path, both}}` for an absolute path. */
+export async function fetchFileContent(path, opts) {
+  const q = new URLSearchParams({ path })
+  return getJSON(`/api/files/content?${q}`, opts)
+}
+
+/**
+ * `{diff, truncated}`: a status entry's unified diff. Staged = index vs HEAD,
+ * else working tree vs index (an untracked file shows as all added, a
+ * conflict as git's combined diff with its markers).
+ */
+export async function fetchGitDiff(cwd, entry, staged, opts) {
+  const q = new URLSearchParams({ cwd, path: entry.path })
+  if (entry.x === "?") q.set("untracked", "1")
+  else if (staged && entry.x !== "!") {
+    q.set("staged", "1")
+    if (entry.orig) q.set("orig", entry.orig)
+  }
+  return getJSON(`/api/git/diff?${q}`, opts)
+}
+
+/** Resolves a merge conflict and stages the result. take: mine | theirs | mine-theirs | theirs-mine. */
+export async function resolveConflict(cwd, path, take) {
+  await getJSON("/api/git/resolve", { method: "POST", body: { cwd, path, take } })
+}
