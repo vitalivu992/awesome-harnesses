@@ -18,6 +18,8 @@ import (
 	"awesome-harness/internal/api"
 	"awesome-harness/internal/auth"
 	"awesome-harness/internal/catalog"
+	"awesome-harness/internal/files"
+	"awesome-harness/internal/git"
 	"awesome-harness/internal/launch"
 	"awesome-harness/internal/runs"
 	"awesome-harness/internal/shell"
@@ -82,6 +84,9 @@ func main() {
 	(&api.Handler{Catalog: cat}).Register(mux)
 	shells.Register(mux)
 	prompts.Register(mux)
+	// The Explorer panel: a project's file tree and its git state.
+	(&files.Handler{}).Register(mux)
+	(&git.Handler{}).Register(mux)
 	// The single-page app: bundle files, else index.html for client routes.
 	// It 404s /health and /api/* paths no pattern above matched.
 	mux.Handle("/", web.Handler(web.Dist))
