@@ -138,7 +138,8 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
 - `internal/runs` — `Manager`: `POST /api/runs` (JSON only — no CORS preflight answer = no
   cross-site runs) checks a continued conversation in the catalog (its cwd wins; Cursor app
   chats refused; one running prompt per conversation → 409), builds the plan and starts the CLI
-  in its own process group, stdin null. Stdout JSONL gives the new session id and error
+  in its own process group with `PWD` set to the run's folder (kilo and opencode resolve the
+  session's directory from `$PWD`, stale in a service's env), stdin null. Stdout JSONL gives the new session id and error
   events (cmdc nests them: `{"type":"event","event":{…}}`; only its `run_error` and a `result`
   with `subtype: "error"` count — `tool_errored` is a tool's failure); the stderr tail is the error otherwise. `DELETE` = SIGINT to the group, SIGKILL
   after 5 s. Ended runs stay listed 15 min. CLIs are looked up in `LAUNCH_PATH`, else the login
@@ -147,6 +148,28 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   Also `GET /api/harnesses` (+ `found`), `/{id}/models` (cached 10 min), `/{id}/commands?cwd=`,
   `POST /api/runs/preview` (a new session shows `new-session-uuid`; no cwd → home). Runs
   survive logout.
+- `internal/git` — the Explorer panel's git view: `GET /api/git/status?cwd=` (porcelain v1
+  `-z`, split into `staged`/`changes`, renames carry `orig`, conflicts show as `!`), `GET
+  /api/git/log` (30 newest, `\x1f`-separated fields), `POST /api/git/stage` (`git add`),
+  `unstage` (`git reset HEAD`, falling back to `git rm --cached` on an unborn branch),
+  `discard` (`git checkout HEAD --`, tracked files only) and `commit` (`-m`, answers the new
+  short hash). Every request names the folder in `cwd` (absolute path checked); paths are
+  repository-relative and rejected when absolute, `..`-laden, `:`-prefixed or empty.
+  "not a git repository" is a friendly 400; a missing git binary a 501. Status paths are
+  relative to the repository root (also `root` in the status answer), so path commands run
+  at `rev-parse --show-toplevel`, not `cwd` (a project can be a subfolder). Conflict
+  entries keep git's own letters in `conflict` (`UU`, `UD`, …). `resolve.go`: `GET
+  /api/git/diff?cwd=&path=` (`&staged=1[&orig=]` index vs HEAD, `&untracked=1` via `diff
+  --no-index /dev/null`, which exits 1; an untracked folder = its files, 50 max; 1 MB cap)
+  and `POST /api/git/resolve {cwd, path, take}`: `mine`/`theirs` = `checkout --ours/--theirs`
+  + `add` (`rm` when that side deleted the file), `mine-theirs`/`theirs-mine` = `merge-file
+  -p --union` over the stage blobs (`:1:` base, `:2:` ours, `:3:` theirs) written back + `add`.
+  During a rebase mine = stage 3 (the replayed commit). Already resolved → 409.
+- `internal/files` — `GET /api/files?cwd=`: one folder's entries for the file tree (dirs
+  first, names case-insensitive; dotfiles skipped, so also `.git`; capped at 5000). The tree
+  loads each directory as it is expanded. `GET /api/files/content?path=` (absolute): text up
+  to 2 MB (`truncated`), `binary` when a NUL is in the first 8000 bytes, `conflict`
+  (`git.Conflict`: `ls-files -u` → `{cwd: root, path, both}`) when unmerged.
 - `internal/api` — `GET /api/projects`, `GET /api/conversations?project=<key>`,
   `GET /api/conversations/{harness}/{id}` (ETag = `Catalog.ConversationIfChanged` version: size +
   mtime + active flag, so it also changes when the active window passes; `If-None-Match` → 304
@@ -164,7 +187,8 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   A logout runs it the other way: `LoginScreen locking` mounts over the still-mounted browser
   (backdrop blurs and turns opaque, then the form fades in; `LOCK_MS`), the browser unmounts
   once both the logout request and `LOCK_MS` are done; `LOGGED_OUT_EVENT`s are ignored meanwhile.
-- `App.jsx` (browser) — three columns (a fourth while Settings is open); the selection is in the URL
+- `App.jsx` (browser) — three columns (a fourth while Settings is open, plus the explorer's
+  panel on the right while it is open); the selection is in the URL
   (`?project=<key>&c=<harness>:<id>`, `&new=<harness>` for the new-conversation page).
   `useFetch` aborts stale loads; its `poll(data)` option reloads quietly (no spinner, errors
   keep the data, paused while hidden): both lists use `listPollDelay` (4 s while something is
@@ -194,6 +218,23 @@ strings in the API, URLs and `src/lib/format.js` `HARNESSES`.
   request) and `hooks/useSettings.js` (same-tab event + `storage`); harness info, commands
   and models via `hooks/useHarnessData.js` (cached per page). `e2e/prompts.spec.js` has its own
   Playwright project (live → prompts → shells) and project folder, removed afterwards.
+- `components/Explorer.jsx` — the right panel (`components/Explorer.jsx`): no column when
+  closed (`explorerOpen` pref, collapsed by default; its toggle `#ahExplorerToggle` is the
+  folder-tree icon at the right end of the terminal bar, `ShellPanel onToggleExplorer`) and when open the
+  selected project's folder as one of two tabs (`explorerTab` pref): **Files** (lazy tree,
+  `lib/explorer.js` sorts entries and picks icons) and **Git** (Staged/Changes from
+  `/api/git/status`, polled 5 s so a working agent's edits appear; stage/unstage/discard per
+  row, discard asks inline first; a commit box enabled once something is staged and the
+  message is non-empty; the log under it). Pure helpers in `lib/explorer.js` (tested).
+  A tree file or a git row's name opens `components/FileViewer.jsx`: absolutely positioned
+  over the right ~74% of `.ah-main` (the conversation stays visible beside it), state in
+  `App.jsx` (`viewer` target + an `id` that remounts it; closes on project change and Esc,
+  `viewerKey` marks the open row). File = GitHub-style table (numbers from `data-line` via
+  `::before`, so a copy skips them; whole-file hljs split per line); diff = `lib/viewer.js`
+  `parseDiff` (also `diff --cc`). A conflict (file `conflict`, or a git entry with `x: "!"`)
+  gets Take theirs / Take mine buttons and a … menu (`.ah-menu--down`) with the two
+  combinations (only when both sides have the file); after a resolve the viewer opens the
+  file with a notice and `gitVersion` reloads the Git tab.
 - `components/Shells.jsx` — `ShellProvider` (shell list restored from `/api/shells`, active tab,
   open/minimized; `useShells().openShell({cwd, run})` from the project rows and the Resume
   popover) and `ShellPanel` (tab bar = status bar, drag-to-resize, height in prefs).

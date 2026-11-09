@@ -127,6 +127,20 @@ in memory). A browser that restores the last session on start also restores this
   badges). The open conversation's header carries a Windows 11-style progress bar while the
   agent works (its **Live** chip shows once the turn has ended). Both lists reload by themselves: every 4 s while something in them is live,
   every 15 s otherwise.
+- **Explorer** (right; the folder-tree icon at the right end of the Terminal bar opens and closes it, » also closes it — collapsed by
+  default, remembered in this browser): the selected project's folder, one of two tabs.
+  **Files** is the file tree (dotfiles hidden, folders load as they expand, sizes shown).
+  **Git** is the repository state: the branch, **Staged** and **Changes** with a status letter
+  per file (M/A/D/R/U/!), stage a file from Changes (+), unstage it from Staged (−), discard
+  a tracked file's changes (↺, with a confirm), a commit box for the staged changes
+  (Ctrl/⌘+Enter commits), and the recent commits under it. The status refreshes itself every
+  few seconds, so a working agent's edits appear on their own. Outside a repository the tab
+  says so; untracked files can't be discarded (deleting files is not a "revert").
+  Clicking a file (Files) opens it over the right part of the conversation, GitHub-style with
+  line numbers and colours; clicking a file under Staged/Changes opens its unified diff.
+  A file in a merge conflict shows **Take theirs** and **Take mine** in its header, and under
+  **…** **Take theirs, then mine** / **Take mine, then theirs** (both sides' lines kept, in that
+  order). One click resolves the conflict and stages the file. Esc or × closes the viewer.
 - **Terminal** (bottom of the conversation column): any number of shell tabs. Open one with the
   terminal button on a project row (hover), **+** in the terminal bar (current project's
   folder) or **Run in shell**. Each tab shows its number (counting up from the server's
